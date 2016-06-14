@@ -1,0 +1,31 @@
+{
+  "name": "bloggero-elm-mdl",
+  "version": "0.0.1",
+  "description": "Bloggero -- engine for static blogs with single page interface written in Elm with Material Design Light.",
+  "main": "app.js",
+  "scripts": {
+    "start": "elm-live src/Main.elm --output=app.js --open",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/easimonenko/bloggero-elm-mdl.git"
+  },
+  "keywords": [
+    "blog",
+    "engine",
+    "spa",
+    "elm",
+    "mdl"
+  ],
+  "author": "Evgeniy A. Simonenko <easimonenko@mail.ru",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/easimonenko/bloggero-elm-mdl/issues"
+  },
+  "homepage": "https://github.com/easimonenko/bloggero-elm-mdl#readme",
+  "engines": {
+    "node": "5 - 6",
+    "npm": "^3.9.0"
+  }
+}
