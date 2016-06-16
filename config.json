@@ -1,0 +1,18 @@
+{
+  "title": "My blog",
+  "navigation": [
+    {
+      "title": "Home",
+      "route": "/",
+      "icon": "home"
+    },
+    {
+      "title": "Blog",
+      "route": "/blog"
+    },
+    {
+      "title": "About",
+      "route": "/about"
+    }
+  ]
+}
