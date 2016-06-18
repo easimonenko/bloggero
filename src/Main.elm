@@ -6,6 +6,7 @@ import Html.Attributes exposing (class, href)
 
 import Http
 import Json.Decode exposing (..)
+import List
 
 import Material
 import Material.Icon as Icon
@@ -16,10 +17,17 @@ import Material.Snackbar as Snackbar
 import String
 import Task
 
+type alias NavigationItem =
+  {
+    title : String,
+    route : String,
+    icon : Maybe String
+  }
+
 type alias Model =
   {
     title : String,
-    config : String,
+    navigation : List NavigationItem,
     toast : String
   }
 
@@ -36,7 +44,7 @@ init =
   (
     {
       title = "",
-      config = "",
+      navigation = [],
       toast = ""
     },
     Task.perform ConfigFetchFail ConfigFetchSucceed (Http.getString "/config.json")
@@ -50,6 +58,7 @@ headerView model = [ Layout.row []
         [
           a [ class "mdl-navigation__link", href "/#!/"] [ Icon.i "home", text "Home" ]
         ]
+        --List.map (\ item -> a [ class "mdl-navigation__link", href ("/#!" ++ item.route) ] [ case item.icon of {Nothing -> ""; Just iconName -> Icon.i iconName}, text item.title ]) model.navigation
     ]
   ]
 
@@ -58,7 +67,7 @@ drawerView = [ div [] [] ]
 mainView model =
   [ main' []
     [
-      text model.toast
+      text <| toString <| List.length model.navigation
     ]
   ]
 
@@ -86,9 +95,17 @@ update action model = case action of
       blogTitle = case decodeString ("title" := string) config of
         Ok str -> str
         Err _ -> ""
+      navigationItemListDecoder = list
+        (
+          object3 NavigationItem
+            ("title" := string) ("route" := string) (maybe ("icon" := string))
+        )
+      blogNavigation = case decodeString ("navigation" := navigationItemListDecoder) config of
+        Ok list -> list
+        Err _ -> []
     in
       (
-        { model | title = blogTitle }, title blogTitle
+        { model | title = blogTitle, navigation = blogNavigation }, title blogTitle
       )
   _ -> ( model, Cmd.none )
 
