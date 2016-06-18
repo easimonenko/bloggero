@@ -1,10 +1,11 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Html exposing (..)
 import Html.App exposing (program)
 import Html.Attributes exposing (class, href)
 
 import Http
+import Json.Decode exposing (..)
 
 import Material
 import Material.Icon as Icon
@@ -28,6 +29,8 @@ type Msg =
   ConfigFetchFail Http.Error |
   ShowToast String |
   ShowErrorToast String
+
+port title : String -> Cmd msg
 
 init =
   (
@@ -78,7 +81,15 @@ update action model = case action of
   ConfigFetchFail Http.NetworkError -> Snackbar.add (Snackbar.toast () "NetworkError") model
   ConfigFetchFail (Http.UnexpectedPayload str) -> Snackbar.add (Snackbar.toast () str) model
   ConfigFetchFail (Http.BadResponse code str) -> Snackbar.add (Snackbar.toast () ((toString code) ++ str)) model-}
-  ConfigFetchSucceed config -> ( { model | toast = config }, Cmd.none )
+  ConfigFetchSucceed config ->
+    let
+      blogTitle = case decodeString ("title" := string) config of
+        Ok str -> str
+        Err _ -> ""
+    in
+      (
+        { model | title = blogTitle }, title blogTitle
+      )
   _ -> ( model, Cmd.none )
 
 subscriptions model = Sub.none

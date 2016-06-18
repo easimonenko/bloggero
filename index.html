@@ -11,7 +11,10 @@
   <body>
     <script src="/app.js"></script>
     <script>
-      Elm.Main.fullscreen();
+      var app = Elm.Main.fullscreen();
+      app.ports.title.subscribe(function(title) {
+        document.title = title;
+      })
     </script>
   </body>
 </html>
