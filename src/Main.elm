@@ -50,17 +50,29 @@ init =
     Task.perform ConfigFetchFail ConfigFetchSucceed (Http.getString "/config.json")
   )
 
-headerView model = [ Layout.row []
-    [
-      Layout.title [] [ text model.title ],
-      Layout.spacer,
-      Layout.navigation []
+headerView model =
+  let
+    makeA item =
+      a
+        [ class "mdl-navigation__link", href ("/#!" ++ item.route) ]
         [
-          a [ class "mdl-navigation__link", href "/#!/"] [ Icon.i "home", text "Home" ]
+          (
+            case item.icon of
+              Nothing -> span [] [text ""]
+              Just iconName -> Icon.i iconName
+          ),
+          text item.title
         ]
-        --List.map (\ item -> a [ class "mdl-navigation__link", href ("/#!" ++ item.route) ] [ case item.icon of {Nothing -> ""; Just iconName -> Icon.i iconName}, text item.title ]) model.navigation
+  in
+    [
+      Layout.row []
+        [
+          Layout.title [] [ text model.title ],
+          Layout.spacer,
+          Layout.navigation [] (List.map makeA model.navigation)
+        ]
     ]
-  ]
+
 
 drawerView = [ div [] [] ]
 
