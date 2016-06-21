@@ -4,3 +4,5 @@ elm-stuff/
 repl-temp-*
 # elm-make generated files
 app.js
+# node.js files
+npm-debug.log
