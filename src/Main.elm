@@ -1,12 +1,13 @@
 port module Main exposing (main)
 
 import Html exposing (..)
-import Html.App exposing (program)
 import Html.Attributes exposing (class, href)
 
 import Http
 import Json.Decode exposing (..)
-import List
+import List exposing (head, tail)
+import String
+import Task
 
 import Material
 import Material.Icon as Icon
@@ -14,8 +15,15 @@ import Material.Layout as Layout
 import Material.Options as Options
 import Material.Snackbar as Snackbar
 
-import String
-import Task
+import Navigation
+import UrlParser exposing ((</>))
+
+
+type alias Page =
+  {
+    path : String,
+    query : String
+  }
 
 type alias NavigationItem =
   {
@@ -26,6 +34,8 @@ type alias NavigationItem =
 
 type alias Model =
   {
+    page : Page,
+    configLoaded : Bool,
     title : String,
     navigation : List NavigationItem,
     toast : String
@@ -40,15 +50,8 @@ type Msg =
 
 port title : String -> Cmd msg
 
-init =
-  (
-    {
-      title = "",
-      navigation = [],
-      toast = ""
-    },
-    Task.perform ConfigFetchFail ConfigFetchSucceed (Http.getString "/config.json")
-  )
+init result =
+  urlUpdate result { page = { path = "", query = "" }, configLoaded = False, title = "", navigation = [], toast = "" }
 
 headerView model =
   let
@@ -79,7 +82,10 @@ drawerView = [ div [] [] ]
 mainView model =
   [ main' []
     [
-      text <| toString <| List.length model.navigation
+      div []
+        [ text <| toString <| "path: " ++ model.page.path ++ " query: " ++ model.page.query ],
+      div []
+        [ text <| toString model.toast ]
     ]
   ]
 
@@ -117,16 +123,46 @@ update action model = case action of
         Err _ -> []
     in
       (
-        { model | title = blogTitle, navigation = blogNavigation }, title blogTitle
+        { model | configLoaded = True, title = blogTitle, navigation = blogNavigation }, title blogTitle
       )
   _ -> ( model, Cmd.none )
 
 subscriptions model = Sub.none
 
-main = program
+hashParser location = UrlParser.parse identity pageParser location.hash
+
+queryString =
+  UrlParser.custom "Getting query string failed"
+    (
+      \ str ->
+        case String.split "?" str of
+          (_ :: q :: _) -> Ok q
+          _ -> Ok ""
+    )
+
+pageParser =
+  UrlParser.oneOf
+    [
+      UrlParser.format (\ path query -> { path = path, query = query }) ( UrlParser.s "#!" </> (UrlParser.string </> queryString)),
+      UrlParser.format (\ path -> { path = path, query = "" }) ( UrlParser.s "#!" </> UrlParser.string ),
+      UrlParser.format { path = "", query = "" } ( UrlParser.s "#!" )
+    ]
+
+urlUpdate result model =
+  if model.configLoaded
+    then
+      case result of
+        Err info -> ( { model | toast = info }, Navigation.modifyUrl "/#!/" )
+        Ok page -> ( { model | page = page, toast = "" }, Cmd.none )
+    else
+      ( model,  Task.perform ConfigFetchFail ConfigFetchSucceed (Http.getString "/config.json") )
+
+main = Navigation.program
+  (Navigation.makeParser hashParser)
   {
     init = init,
     view = view,
     subscriptions = subscriptions,
-    update = update
+    update = update,
+    urlUpdate = urlUpdate
   }
