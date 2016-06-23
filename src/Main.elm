@@ -50,9 +50,6 @@ type Msg =
 
 port title : String -> Cmd msg
 
-init result =
-  urlUpdate result { page = { path = "", query = "" }, configLoaded = False, title = "", navigation = [], toast = "" }
-
 headerView model =
   let
     makeA item =
@@ -102,6 +99,15 @@ view model = Layout.render Mdl Material.model
     tabs = tabsView
   }
 
+init result =
+  let
+    model = { page = { path = "", query = "" }, configLoaded = False, title = "", navigation = [], toast = "" }
+    loadConfig = Task.perform ConfigFetchFail ConfigFetchSucceed (Http.getString "/config.json")
+  in
+    case result of
+      Err info -> ( { model | toast = info }, Cmd.batch [loadConfig, Navigation.modifyUrl "/#!/404"] )
+      Ok page -> ( { model | page = page, toast = "" }, loadConfig )
+
 update action model = case action of
   {--ConfigFetchSucceed config -> Snackbar.add (Snackbar.toast () config) model
   ConfigFetchFail Http.Timeout -> Snackbar.add (Snackbar.toast () "Timeout") model
@@ -148,14 +154,12 @@ pageParser =
       UrlParser.format { path = "", query = "" } ( UrlParser.s "#!" )
     ]
 
+
 urlUpdate result model =
-  if model.configLoaded
-    then
-      case result of
-        Err info -> ( { model | toast = info }, Navigation.modifyUrl "/#!/" )
-        Ok page -> ( { model | page = page, toast = "" }, Cmd.none )
-    else
-      ( model,  Task.perform ConfigFetchFail ConfigFetchSucceed (Http.getString "/config.json") )
+  case result of
+    Err info -> ( { model | toast = info }, Navigation.modifyUrl "/#!/404" )
+    Ok page -> ( { model | page = page, toast = "" }, Cmd.none )
+
 
 main = Navigation.program
   (Navigation.makeParser hashParser)
