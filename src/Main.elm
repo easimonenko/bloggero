@@ -9,6 +9,8 @@ import List exposing (head, tail)
 import String
 import Task
 
+import Markdown
+
 import Material
 import Material.Icon as Icon
 import Material.Layout as Layout
@@ -82,7 +84,9 @@ mainView model =
       div []
         [ text <| toString <| "path: " ++ model.page.path ++ " query: " ++ model.page.query ],
       div []
-        [ text <| toString model.toast ]
+        [ text <| toString model.toast ],
+      div []
+        [ Markdown.toHtml [] "<b>Hello</b>" ]
     ]
   ]
 
