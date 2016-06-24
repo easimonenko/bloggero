@@ -101,12 +101,36 @@ view model = Layout.render Mdl Material.model
 
 init result =
   let
-    model = { page = { path = "", query = "" }, configLoaded = False, title = "", navigation = [], toast = "" }
+    model =
+      {
+        page = { path = "", query = "" },
+        configLoaded = False,
+        title = "",
+        navigation = [],
+        toast = ""
+      }
     loadConfig = Task.perform ConfigFetchFail ConfigFetchSucceed (Http.getString "/config.json")
   in
     case result of
-      Err info -> ( { model | toast = info }, Cmd.batch [loadConfig, Navigation.modifyUrl "/#!/404"] )
-      Ok page -> ( { model | page = page, toast = "" }, loadConfig )
+      Err info ->
+        (
+          { model | toast = info },
+          Cmd.batch [loadConfig, Navigation.modifyUrl "/#!/404"]
+        )
+      Ok page ->
+        if page.path == ""
+        then
+          let modelPage = model.page
+          in
+          (
+            { model | page = { modelPage | path = "home" }, toast = "Redirect to /home" },
+            Cmd.batch [ loadConfig, Navigation.modifyUrl "/#!/home" ]
+          )
+        else
+          (
+            { model | page = page, toast = if page.path == "404" then model.toast else "" },
+            loadConfig
+          )
 
 update action model = case action of
   {--ConfigFetchSucceed config -> Snackbar.add (Snackbar.toast () config) model
@@ -137,28 +161,54 @@ subscriptions model = Sub.none
 
 hashParser location = UrlParser.parse identity pageParser location.hash
 
-queryString =
+{--queryString =
   UrlParser.custom "Getting query string failed"
     (
       \ str ->
         case String.split "?" str of
           (_ :: q :: _) -> Ok q
           _ -> Ok ""
-    )
+    )--}
 
 pageParser =
   UrlParser.oneOf
     [
-      UrlParser.format (\ path query -> { path = path, query = query }) ( UrlParser.s "#!" </> (UrlParser.string </> queryString)),
-      UrlParser.format (\ path -> { path = path, query = "" }) ( UrlParser.s "#!" </> UrlParser.string ),
-      UrlParser.format { path = "", query = "" } ( UrlParser.s "#!" )
+      UrlParser.format
+        (
+           \ url ->
+              case String.split "?" url of
+                [] -> { path = "", query = "" }
+                [ path ] -> { path = path, query = "" }
+                ( path :: query :: _ ) -> { path = path, query = query }
+        )
+        ( UrlParser.s "#!" </> UrlParser.string ),
+      UrlParser.format
+        { path = "", query = "" }
+        ( UrlParser.s "" )
     ]
 
 
 urlUpdate result model =
   case result of
-    Err info -> ( { model | toast = info }, Navigation.modifyUrl "/#!/404" )
-    Ok page -> ( { model | page = page, toast = "" }, Cmd.none )
+    Err info ->
+      (
+        { model | toast = info },
+        Navigation.modifyUrl "/#!/404"
+      )
+    Ok page ->
+      if page.path == ""
+        then
+          let modelPage = model.page
+          in
+          (
+            { model | page = { modelPage | path = "home" }, toast = "Redirect to /home" },
+            Navigation.modifyUrl "/#!/home"
+          )
+        else
+          (
+            { model | page = page, toast = if page.path == "404" then model.toast else "" },
+            Cmd.none
+          )
 
 
 main = Navigation.program

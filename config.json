@@ -3,7 +3,7 @@
   "navigation": [
     {
       "title": "Home",
-      "route": "/",
+      "route": "/home",
       "icon": "home"
     },
     {
