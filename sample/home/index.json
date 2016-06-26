@@ -1,0 +1,10 @@
+{
+  "title": "Home",
+  "content": {
+    "type": "markdown",
+    "file": "index.markdown"
+  },
+  "files": [
+    "index.markdown"
+  ]
+}

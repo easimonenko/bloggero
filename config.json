@@ -14,5 +14,6 @@
       "title": "About",
       "route": "/about"
     }
-  ]
+  ],
+  "root": "/sample"
 }
