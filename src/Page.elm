@@ -1,4 +1,4 @@
-module Page exposing (Model, Msg, init, update, view)
+module Page exposing (Model, Msg(..), init, update, view)
 
 import Html exposing (..)
 import Http
@@ -30,7 +30,7 @@ init path query root =
       title = "",
       content = ""
     },
-    Task.perform PageFetchFail PageFetchSucceed (Http.getString <| root ++ "/" ++ path)
+    Task.perform PageFetchFail PageFetchSucceed (Http.getString <| root ++ "/" ++ path ++ "/index.json")
   )
 
 

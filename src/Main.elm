@@ -24,7 +24,7 @@ import Page
 
 main : Program Never
 main = Navigation.program
-  (Navigation.makeParser hashParser)
+  (Navigation.makeParser urlParser)
   {
     init = init,
     view = view,
@@ -80,23 +80,21 @@ init result =
       Err info ->
         (
           { model | toasts = info :: model.toasts },
-          Cmd.batch [loadConfig, Navigation.modifyUrl "/#!/404"]
+          Cmd.batch [loadConfig, Navigation.modifyUrl "/#!/error/bad-response/404"]
         )
-      Ok page ->
+      Ok pageUrl ->
         if
-          page.path == ""
+          pageUrl.path == ""
         then
           let
             modelPage = model.page
           in
           (
-            --{ model | page = { modelPage | path = "home" }, toasts = "Redirect to /home" :: model.toasts },
             { model | toasts = "Redirect to /home" :: model.toasts },
             Cmd.batch [ loadConfig, Navigation.modifyUrl "/#!/home" ]
           )
         else
           (
-            --{ model | page = page, toasts = (if page.path == "404" then model.toast else "") :: model.toasts },
             model,
             loadConfig
           )
@@ -131,14 +129,18 @@ update action model = case action of
         title blogTitle
       )
   PageMsg pageMsg ->
-    case model.page of
-      Just page ->
-        let
-          (updatedPage, pageCmds) = Page.update pageMsg page
-        in
-          ( { model | page = Just updatedPage}, Cmd.map PageMsg pageCmds )
-      Nothing ->
-        ( { model | toasts = "WTF: page is Nothing!" :: model.toasts }, Cmd.none )
+    case pageMsg of
+      Page.PageFetchFail (Http.BadResponse statusCode statusInfo) ->
+        ( { model | toasts = statusInfo :: model.toasts }, Navigation.modifyUrl <| "/#!/error/bad-response/" ++ toString statusCode )
+      _ ->
+        case model.page of
+          Just page ->
+            let
+              (updatedPage, pageCmds) = Page.update pageMsg page
+            in
+              ( { model | page = Just updatedPage}, Cmd.map PageMsg pageCmds )
+          Nothing ->
+            ( { model | toasts = "WTF: page is Nothing!" :: model.toasts }, Cmd.none )
   _ ->
     ( model, Cmd.none )
 
@@ -146,27 +148,11 @@ update action model = case action of
 subscriptions model = Sub.none
 
 
-hashParser
-  : { a | hash : String }
+urlParser
+  : Navigation.Location
   -> Result String { path : String, query : String }
-hashParser location = UrlParser.parse identity pageParser location.hash
-
-pageParser =
-  UrlParser.oneOf
-    [
-      UrlParser.format
-        (
-           \ url ->
-              case String.split "?" url of
-                [] -> { path = "", query = "" }
-                [ path ] -> { path = path, query = "" }
-                ( path :: query :: _ ) -> { path = path, query = query }
-        )
-        ( UrlParser.s "#!" </> UrlParser.string ),
-      UrlParser.format
-        { path = "", query = "" }
-        ( UrlParser.s "" )
-    ]
+urlParser location =
+  Ok { path = String.dropLeft 3 location.hash, query = String.dropLeft 1 location.search }
 
 
 urlUpdate : Result String { path : String, query : String } -> Model -> (Model, Cmd Msg)
@@ -175,19 +161,19 @@ urlUpdate result model =
     Err info ->
       (
         { model | toasts = info :: model.toasts },
-        Navigation.modifyUrl "/#!/404"
+        Navigation.modifyUrl "/#!/error/bad-response/404"
       )
-    Ok page ->
+    Ok parsedUrl ->
       if
-        page.path == ""
+        parsedUrl.path == ""
       then
         (
-           { model | toasts = "Redirect to /home" :: model.toasts },
-           Navigation.modifyUrl "/#!/home"
+          { model | toasts = "Redirect to /home" :: model.toasts },
+          Navigation.modifyUrl "/#!/home"
         )
       else
         let
-          (page, pageFx) = Page.init page.path page.query model.root
+          (page, pageFx) = Page.init parsedUrl.path parsedUrl.query model.root
         in
           (
             { model | page = Just page },
