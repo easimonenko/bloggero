@@ -53,7 +53,7 @@ type alias NavigationItem =
 
 type Msg =
   Mdl Material.Msg |
-  ConfigFetchSucceed String |
+  ConfigFetchSucceed { path : String, query : String } String |
   ConfigFetchFail Http.Error |
   ShowToast String |
   ShowErrorToast String |
@@ -74,13 +74,14 @@ init result =
         toasts = [],
         root = ""
       }
-    loadConfig = Task.perform ConfigFetchFail ConfigFetchSucceed (Http.getString "/config.json")
+    loadConfig parsedUrl = Task.perform ConfigFetchFail (ConfigFetchSucceed parsedUrl) (Http.getString "/config.json")
   in
     case result of
       Err info ->
         (
           { model | toasts = info :: model.toasts },
-          Cmd.batch [loadConfig, Navigation.modifyUrl "/#!/error/bad-response/404"]
+          --Cmd.batch [loadConfig, Navigation.modifyUrl "/#!/error/bad-response/404"]
+          loadConfig { path = "/#!/error/bad-response/404", query = "" }
         )
       Ok pageUrl ->
         if
@@ -91,12 +92,16 @@ init result =
           in
           (
             { model | toasts = "Redirect to /home" :: model.toasts },
-            Cmd.batch [ loadConfig, Navigation.modifyUrl "/#!/home" ]
+            Cmd.batch [ loadConfig pageUrl, Navigation.modifyUrl "/#!/home" ]
           )
         else
+          let
+            (page, pageFx) = Page.init pageUrl.path pageUrl.query model.root
+          in
           (
-            model,
-            loadConfig
+
+            { model | page = Just page },
+            Cmd.batch [ loadConfig pageUrl, Cmd.map PageMsg pageFx ]
           )
 
 
@@ -107,7 +112,7 @@ update action model = case action of
   ConfigFetchFail Http.NetworkError -> Snackbar.add (Snackbar.toast () "NetworkError") model
   ConfigFetchFail (Http.UnexpectedPayload str) -> Snackbar.add (Snackbar.toast () str) model
   ConfigFetchFail (Http.BadResponse code str) -> Snackbar.add (Snackbar.toast () ((toString code) ++ str)) model-}
-  ConfigFetchSucceed config ->
+  ConfigFetchSucceed pageUrl config ->
     let
       blogTitle = case decodeString ("title" := string) config of
         Ok str -> str
@@ -126,7 +131,7 @@ update action model = case action of
     in
       (
         { model | title = blogTitle, navigation = blogNavigation, root = blogRoot },
-        title blogTitle
+        Cmd.batch [ title blogTitle, Navigation.modifyUrl <| "/#!" ++ pageUrl.path ]
       )
   PageMsg pageMsg ->
     case pageMsg of
@@ -152,7 +157,7 @@ urlParser
   : Navigation.Location
   -> Result String { path : String, query : String }
 urlParser location =
-  Ok { path = String.dropLeft 3 location.hash, query = String.dropLeft 1 location.search }
+  Ok { path = String.dropLeft 2 location.hash, query = String.dropLeft 1 location.search }
 
 
 urlUpdate : Result String { path : String, query : String } -> Model -> (Model, Cmd Msg)
