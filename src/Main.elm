@@ -129,8 +129,26 @@ update action model = case action of
   PageMsg pageMsg ->
     case pageMsg of
       Page.PageFetchFail (Http.BadResponse statusCode statusInfo) ->
-        ( { model | toasts = statusInfo :: model.toasts }, Navigation.modifyUrl <| "/#!/error/bad-response/" ++ toString statusCode )
-      _ ->
+        (
+          { model | toasts = statusInfo :: model.toasts },
+          Navigation.modifyUrl <| "/#!/error/bad-response/" ++ toString statusCode
+        )
+      Page.PageFetchFail Http.Timeout ->
+        (
+          { model | toasts = "Http Timeout" :: model.toasts },
+          Navigation.modifyUrl <| "/#!/error/timeout"
+        )
+      Page.PageFetchFail Http.NetworkError ->
+        (
+          { model | toasts = "Network Error" :: model.toasts },
+          Navigation.modifyUrl <| "/#!/error/network-error"
+        )
+      Page.PageFetchFail (Http.UnexpectedPayload _) ->
+        (
+          { model | toasts = "Unexpected Payload" :: model.toasts },
+          Navigation.modifyUrl <| "/#!/error/unexpected-payload"
+        )
+      Page.PageFetchSucceed _ ->
         case model.page of
           Just page ->
             let
