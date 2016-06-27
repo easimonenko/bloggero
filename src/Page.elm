@@ -30,15 +30,15 @@ init path query root =
       title = "",
       content = ""
     },
-    Task.perform PageFetchFail PageFetchSucceed (Http.getString <| root ++ "/" ++ path ++ "/index.json")
+    Task.perform PageFetchFail PageFetchSucceed (Http.getString <| root ++ path ++ "/index.json")
   )
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
-  PageFetchSucceed page ->
+  PageFetchSucceed pageInfo ->
     let
-      pageTitle = case decodeString ( "title" := string ) page of
+      pageTitle = case decodeString ( "title" := string ) pageInfo of
         Ok str -> str
         Err _ -> ""
     in
