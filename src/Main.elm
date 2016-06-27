@@ -74,34 +74,27 @@ init result =
         toasts = [],
         root = ""
       }
-    loadConfig parsedUrl = Task.perform ConfigFetchFail (ConfigFetchSucceed parsedUrl) (Http.getString "/config.json")
+    loadConfig parsedUrl =
+      Task.perform ConfigFetchFail (ConfigFetchSucceed parsedUrl) (Http.getString "/config.json")
   in
     case result of
       Err info ->
         (
           { model | toasts = info :: model.toasts },
-          --Cmd.batch [loadConfig, Navigation.modifyUrl "/#!/error/bad-response/404"]
-          loadConfig { path = "/#!/error/bad-response/404", query = "" }
+          loadConfig { path = "/error/unknown-url", query = "" }
         )
       Ok pageUrl ->
         if
           pageUrl.path == ""
         then
-          let
-            modelPage = model.page
-          in
           (
             { model | toasts = "Redirect to /home" :: model.toasts },
-            Cmd.batch [ loadConfig pageUrl, Navigation.modifyUrl "/#!/home" ]
+            loadConfig { path = "/home", query = pageUrl.query }
           )
         else
-          let
-            (page, pageFx) = Page.init pageUrl.path pageUrl.query model.root
-          in
           (
-
-            { model | page = Just page },
-            Cmd.batch [ loadConfig pageUrl, Cmd.map PageMsg pageFx ]
+            model,
+            loadConfig pageUrl
           )
 
 
@@ -166,7 +159,7 @@ urlUpdate result model =
     Err info ->
       (
         { model | toasts = info :: model.toasts },
-        Navigation.modifyUrl "/#!/error/bad-response/404"
+        Navigation.modifyUrl "/#!/error/unknown-url"
       )
     Ok parsedUrl ->
       if
