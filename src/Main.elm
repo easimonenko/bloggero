@@ -2,10 +2,11 @@ port module Main exposing (main)
 
 import Html exposing (..)
 import Html.App
-import Html.Attributes exposing (class, href)
+import Html.Attributes exposing (class, href, property)
 
 import Http
 import Json.Decode exposing (..)
+import Json.Encode
 import List exposing (head, tail)
 import String
 import Task
@@ -218,9 +219,8 @@ urlUpdate result model =
 
 headerView model =
   let
-    makeA item =
-      a
-        [ class "mdl-navigation__link", href ("/#!" ++ item.route) ]
+    makeLink item =
+      Layout.link [ Layout.href ("/#!" ++ item.route) ]
         [
           (
             case item.icon of
@@ -234,9 +234,7 @@ headerView model =
       Layout.row []
         [
           Layout.title [] [ text model.title ],
-          Layout.spacer,
-          span [] [ text "|" ],
-          Layout.spacer,
+          span [ property "innerHTML" <| Json.Encode.string "&nbsp;::&nbsp;"] [],
           Layout.title []
             [
               text (case model.page of
@@ -246,9 +244,7 @@ headerView model =
                   "Page do'nt loaded")
             ],
           Layout.spacer,
-          span [] [ text "|" ],
-          Layout.spacer,
-          Layout.navigation [] (List.map makeA model.navigation)
+          Layout.navigation [] (List.map makeLink model.navigation)
         ]
     ]
 
