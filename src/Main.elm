@@ -154,7 +154,14 @@ update action model = case action of
             let
               (updatedPage, pageCmds) = Page.update pageMsg page
             in
-              ( { model | page = Just updatedPage}, Cmd.map PageMsg pageCmds )
+              (
+                { model | page = Just updatedPage},
+                Cmd.batch
+                [
+                  title <| model.title ++ " - " ++ updatedPage.title,
+                  Cmd.map PageMsg pageCmds
+                ]
+              )
           Nothing ->
             ( { model | toasts = "WTF: page is Nothing!" :: model.toasts }, Cmd.none )
   _ ->
@@ -218,11 +225,14 @@ headerView model =
           Layout.spacer,
           span [] [ text "|" ],
           Layout.spacer,
-          case model.page of
-            Just page ->
-              span [] [ text page.title ]
-            Nothing ->
-              span [] [ text "Page do'nt loaded" ],
+          Layout.title []
+            [
+              text (case model.page of
+                Just page ->
+                  page.title
+                Nothing ->
+                  "Page do'nt loaded")
+            ],
           Layout.spacer,
           span [] [ text "|" ],
           Layout.spacer,
@@ -237,20 +247,12 @@ drawerView = [ div [] [] ]
 mainView model =
   [ main' []
     [
-      div []
-        [
-          let
-            (path, query) = case model.page of
-              Just page -> (page.path, page.query)
-              Nothing -> ("", "")
-          in
-            text <| "path: " ++ path ++ " query: " ++ query
-        ],
-      div []
-        [ text <| String.join "<--" model.toasts ],
       case model.page of
         Just page -> Html.App.map PageMsg (Page.view page)
-        Nothing -> text "Page do'nt loaded"
+        Nothing -> text "Page do'nt loaded",
+      hr [] [],
+      div []
+        [ text <| String.join "<--" model.toasts ]
     ]
   ]
 
