@@ -128,27 +128,27 @@ update action model = case action of
       )
   PageMsg pageMsg ->
     case pageMsg of
-      Page.PageFetchFail (Http.BadResponse statusCode statusInfo) ->
+      Page.PageInfoFetchFail (Http.BadResponse statusCode statusInfo) ->
         (
           { model | toasts = statusInfo :: model.toasts },
           Navigation.modifyUrl <| "/#!/error/bad-response/" ++ toString statusCode
         )
-      Page.PageFetchFail Http.Timeout ->
+      Page.PageInfoFetchFail Http.Timeout ->
         (
           { model | toasts = "Http Timeout" :: model.toasts },
           Navigation.modifyUrl <| "/#!/error/timeout"
         )
-      Page.PageFetchFail Http.NetworkError ->
+      Page.PageInfoFetchFail Http.NetworkError ->
         (
           { model | toasts = "Network Error" :: model.toasts },
           Navigation.modifyUrl <| "/#!/error/network-error"
         )
-      Page.PageFetchFail (Http.UnexpectedPayload _) ->
+      Page.PageInfoFetchFail (Http.UnexpectedPayload _) ->
         (
           { model | toasts = "Unexpected Payload" :: model.toasts },
           Navigation.modifyUrl <| "/#!/error/unexpected-payload"
         )
-      Page.PageFetchSucceed _ ->
+      Page.PageInfoFetchSucceed _ ->
         case model.page of
           Just page ->
             let
@@ -161,6 +161,18 @@ update action model = case action of
                   title <| model.title ++ " - " ++ updatedPage.title,
                   Cmd.map PageMsg pageCmds
                 ]
+              )
+          Nothing ->
+            ( { model | toasts = "WTF: page is Nothing!" :: model.toasts }, Cmd.none )
+      _ ->
+        case model.page of
+          Just page ->
+            let
+              (updatedPage, pageCmds) = Page.update pageMsg page
+            in
+              (
+                { model | page = Just updatedPage },
+                Cmd.map PageMsg pageCmds
               )
           Nothing ->
             ( { model | toasts = "WTF: page is Nothing!" :: model.toasts }, Cmd.none )
