@@ -2,7 +2,7 @@ port module Main exposing (main)
 
 import Html exposing (..)
 import Html.App
-import Html.Attributes exposing (class, href, property)
+import Html.Attributes exposing (class, classList, href, property)
 
 import Http
 import Json.Decode exposing (..)
@@ -12,6 +12,7 @@ import String
 import Task
 
 import Material
+import Material.Footer as Footer
 import Material.Icon as Icon
 import Material.Layout as Layout
 import Material.Options as Options
@@ -294,8 +295,18 @@ mainView model =
         Just page -> Html.App.map PageMsg (Page.view page)
         Nothing -> text "Page do'nt loaded",
       hr [] [],
-      div []
-        [ text <| String.join "<--" model.toasts ]
+      div [] [ text <| String.join "<--" model.toasts ],
+      Footer.mini []
+        {
+          left = Footer.left []
+            [
+              Footer.logo [] [ Footer.html <| span [ property "innerHTML" <| Json.Encode.string "&copy; 2016"] [] ]
+            ],
+          right = Footer.right []
+            [
+              Footer.socialButton [] []
+            ]
+        }
     ]
 
 
