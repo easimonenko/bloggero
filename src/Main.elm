@@ -92,12 +92,12 @@ init result =
         then
           (
             { model | toasts = "Redirect to /home" :: model.toasts },
-            loadConfig { path = "/home", query = pageUrl.query }
+            Cmd.batch [ Layout.sub0 Mdl, loadConfig { path = "/home", query = pageUrl.query } ]
           )
         else
           (
             model,
-            loadConfig pageUrl
+            Cmd.batch [ Layout.sub0 Mdl, loadConfig pageUrl ]
           )
 
 
@@ -185,7 +185,7 @@ update msg model = case msg of
     ( model, Cmd.none )
 
 
-subscriptions model = Sub.none
+subscriptions = .mdl >> Layout.subs Mdl
 
 
 urlParser
@@ -237,15 +237,18 @@ headerView model =
     [
       Layout.row []
         [
-          Layout.title [] [ text model.title ],
-          span [ property "innerHTML" <| Json.Encode.string "&nbsp;::&nbsp;"] [],
           Layout.title []
             [
-              text (case model.page of
-                Just page ->
-                  page.title
-                Nothing ->
-                  "Page do'nt loaded")
+              text model.title,
+              span [ property "innerHTML" <| Json.Encode.string "&nbsp;::&nbsp;"] [],
+              text
+                (
+                  case model.page of
+                    Just page ->
+                      page.title
+                    Nothing ->
+                      "Page do'nt loaded"
+                )
             ],
           Layout.spacer,
           Layout.navigation [] (List.map makeLink model.navigation)
@@ -253,11 +256,39 @@ headerView model =
     ]
 
 
-drawerView = [ div [] [] ]
+drawerView model =
+  let
+    makeLink item =
+      Layout.link [ Layout.href ("/#!" ++ item.route) ]
+        [
+          (
+            case item.icon of
+              Nothing -> span [] [text ""]
+              Just iconName -> Icon.i iconName
+          ),
+          text item.title
+        ]
+  in
+    [
+      Layout.title []
+        [
+          text model.title,
+          span [ property "innerHTML" <| Json.Encode.string "&nbsp;::&nbsp;"] [],
+          text
+            (
+              case model.page of
+                Just page ->
+                  page.title
+                Nothing ->
+                  "Page do'nt loaded"
+            )
+        ],
+        hr [] [],
+        Layout.navigation [] (List.map makeLink model.navigation)
+    ]
 
 
 mainView model =
-  [ main' []
     [
       case model.page of
         Just page -> Html.App.map PageMsg (Page.view page)
@@ -266,14 +297,13 @@ mainView model =
       div []
         [ text <| String.join "<--" model.toasts ]
     ]
-  ]
 
 
 tabsView = ( [], [] )
 
 
 view : Model -> Html Msg
-view model = Layout.render Mdl Material.model
+view model = Layout.render Mdl model.mdl
   [
     Layout.fixedHeader,
     Layout.fixedTabs,
@@ -282,7 +312,7 @@ view model = Layout.render Mdl Material.model
   ]
   {
     header = headerView model,
-    drawer = drawerView,
+    drawer = drawerView model,
     main = mainView model,
     tabs = tabsView
   }
