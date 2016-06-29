@@ -37,6 +37,7 @@ main = Navigation.program
 
 type alias Model =
   {
+    mdl : Material.Model,
     page : Maybe Page.Model,
     title : String,
     navigation : List NavigationItem,
@@ -69,6 +70,7 @@ init result =
   let
     model =
       {
+        mdl = Material.model,
         page = Nothing,
         title = "",
         navigation = [],
@@ -100,7 +102,9 @@ init result =
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
-update action model = case action of
+update msg model = case msg of
+  Mdl mdlMsg ->
+    Material.update Mdl mdlMsg model
   {--ConfigFetchSucceed config -> Snackbar.add (Snackbar.toast () config) model
   ConfigFetchFail Http.Timeout -> Snackbar.add (Snackbar.toast () "Timeout") model
   ConfigFetchFail Http.NetworkError -> Snackbar.add (Snackbar.toast () "NetworkError") model
@@ -271,7 +275,10 @@ tabsView = ( [], [] )
 view : Model -> Html Msg
 view model = Layout.render Mdl Material.model
   [
-    Layout.fixedHeader
+    Layout.fixedHeader,
+    Layout.fixedTabs,
+    Layout.seamed,
+    Layout.waterfall True
   ]
   {
     header = headerView model,

@@ -6,9 +6,12 @@ import Json.Decode exposing (..)
 import Markdown
 import Task
 
+import Material
+
 
 type alias Model =
   {
+    mdl : Material.Model,
     path : String,
     query : String,
     root : String,
@@ -20,6 +23,7 @@ type alias Model =
 
 
 type Msg =
+  Mdl Material.Msg |
   PageInfoFetchSucceed String |
   PageInfoFetchFail Http.Error |
   PageContentFetchSucceed String |
@@ -30,6 +34,7 @@ init : String -> String -> String -> (Model, Cmd Msg)
 init path query root =
   (
     {
+      mdl = Material.model,
       path = path,
       query = query,
       root = root,
@@ -47,6 +52,8 @@ init path query root =
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
+  Mdl mdlMsg ->
+    Material.update Mdl mdlMsg model
   PageInfoFetchSucceed pageInfo ->
     let
       pageTitle =
