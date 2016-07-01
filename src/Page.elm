@@ -92,8 +92,5 @@ view : Model -> Html Msg
 view model =
   article []
     [
-      Markdown.toHtml [] model.content,
-      hr [] [],
-      div [] [ text model.contentType ],
-      div [] [ text model.contentFile ]
+      Markdown.toHtml [] model.content
     ]

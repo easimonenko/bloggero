@@ -12,7 +12,9 @@ import String
 import Task
 
 import Material
+import Material.Elevation as Elevation
 import Material.Footer as Footer
+import Material.Grid as Grid exposing (Device(..))
 import Material.Icon as Icon
 import Material.Layout as Layout
 import Material.Options as Options
@@ -388,23 +390,45 @@ headerView model =
         ]
   in
     [
-      Layout.row []
+      div [class "mdl-layout--large-screen-only"]
         [
-          Layout.title []
+          Layout.row []
             [
-              text model.title,
-              span [ property "innerHTML" <| Json.Encode.string "&nbsp;::&nbsp;"] [],
-              text
-                (
-                  case model.page of
-                    Just page ->
-                      page.title
-                    Nothing ->
-                      "Page do'nt loaded"
-                )
-            ],
-          Layout.spacer,
-          Layout.navigation [] (List.map makeLink model.navigation)
+              Layout.title []
+                [
+                  text model.title,
+                  span [ property "innerHTML" <| Json.Encode.string "&nbsp;::&nbsp;"] [],
+                  text
+                    (
+                      case model.page of
+                        Just page ->
+                          page.title
+                        Nothing ->
+                          "Page do'nt loaded"
+                    )
+                ],
+              Layout.spacer,
+              Layout.navigation [] (List.map makeLink model.navigation)
+            ]
+        ],
+      div [class "mdl-layout--small-screen-only"]
+        [
+          Layout.row []
+            [
+              Layout.title []
+                [
+                  text model.title,
+                  span [ property "innerHTML" <| Json.Encode.string "&nbsp;::&nbsp;"] [],
+                  text
+                    (
+                      case model.page of
+                        Just page ->
+                          page.title
+                        Nothing ->
+                          "Page do'nt loaded"
+                    )
+                ]
+            ]
         ]
     ]
 
@@ -443,11 +467,15 @@ drawerView model =
 
 mainView model =
     [
-      case model.page of
-        Just page -> Html.App.map PageMsg (Page.view page)
-        Nothing -> text "Page do'nt loaded",
-      hr [] [],
-      div [] [ text <| String.join "<--" model.toasts ],
+      Grid.grid []
+        [
+          Grid.cell [ Grid.size All 8, Grid.offset Desktop 2, Elevation.e3 ]
+            [
+              case model.page of
+                Just page -> Html.App.map PageMsg (Page.view page)
+                Nothing -> text "Page do'nt loaded"
+            ]
+        ],
       Footer.mini []
         {
           left = Footer.left []
