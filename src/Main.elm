@@ -86,18 +86,36 @@ init result =
   in
     case result of
       Err info ->
-        (
-          { model | toasts = info :: model.toasts },
-          loadConfig { path = "/error/unknown-url", query = "" }
-        )
+        let
+          (snackbar', snackbarCmds) =
+            Snackbar.add (Snackbar.toast () <| "Parsing URL: " ++ info) model.snackbar
+        in
+          (
+            { model | snackbar = snackbar' },
+            Cmd.batch
+              [
+                Layout.sub0 Mdl,
+                Cmd.map SnackbarMsg snackbarCmds,
+                loadConfig { path = "/error/unknown-url", query = "" }
+              ]
+          )
       Ok pageUrl ->
         if
           pageUrl.path == ""
         then
-          (
-            { model | toasts = "Redirect to /home" :: model.toasts },
-            Cmd.batch [ Layout.sub0 Mdl, loadConfig { path = "/home", query = pageUrl.query } ]
-          )
+          let
+            (snackbar', snackbarCmds) =
+              Snackbar.add (Snackbar.toast () <| "Redirect to /home.") model.snackbar
+          in
+            (
+              { model | snackbar = snackbar' },
+              Cmd.batch
+                [
+                  Layout.sub0 Mdl,
+                  Cmd.map SnackbarMsg snackbarCmds,
+                  loadConfig { path = "/home", query = pageUrl.query }
+                ]
+            )
         else
           (
             model,
@@ -186,25 +204,65 @@ update msg model = case msg of
   PageMsg pageMsg ->
     case pageMsg of
       Page.PageInfoFetchFail (Http.BadResponse statusCode statusInfo) ->
-        (
-          { model | toasts = statusInfo :: model.toasts },
-          Navigation.modifyUrl <| "/#!/error/bad-response/" ++ toString statusCode
-        )
+        let
+          (snackbar', snackbarCmds) =
+            Snackbar.add
+              (Snackbar.toast () <| "Bad response: " ++ (toString statusCode) ++ " - " ++ statusInfo)
+              model.snackbar
+        in
+          (
+            { model | snackbar = snackbar' },
+            Cmd.batch
+              [
+                Cmd.map SnackbarMsg snackbarCmds,
+                Navigation.modifyUrl <| "/#!/error/bad-response/" ++ toString statusCode
+              ]
+          )
       Page.PageInfoFetchFail Http.Timeout ->
-        (
-          { model | toasts = "Http Timeout" :: model.toasts },
-          Navigation.modifyUrl <| "/#!/error/timeout"
-        )
+        let
+          (snackbar', snackbarCmds) =
+            Snackbar.add
+              (Snackbar.toast () "Timeout.")
+              model.snackbar
+        in
+          (
+            { model | snackbar = snackbar' },
+            Cmd.batch
+              [
+                Cmd.map SnackbarMsg snackbarCmds,
+                Navigation.modifyUrl <| "/#!/error/timeout"
+              ]
+          )
       Page.PageInfoFetchFail Http.NetworkError ->
-        (
-          { model | toasts = "Network Error" :: model.toasts },
-          Navigation.modifyUrl <| "/#!/error/network-error"
-        )
-      Page.PageInfoFetchFail (Http.UnexpectedPayload _) ->
-        (
-          { model | toasts = "Unexpected Payload" :: model.toasts },
-          Navigation.modifyUrl <| "/#!/error/unexpected-payload"
-        )
+        let
+          (snackbar', snackbarCmds) =
+            Snackbar.add
+              (Snackbar.toast () "Network error.")
+              model.snackbar
+        in
+          (
+            { model | snackbar = snackbar' },
+            Cmd.batch
+              [
+                Cmd.map SnackbarMsg snackbarCmds,
+                Navigation.modifyUrl <| "/#!/error/network-error"
+              ]
+          )
+      Page.PageInfoFetchFail (Http.UnexpectedPayload info) ->
+        let
+          (snackbar', snackbarCmds) =
+            Snackbar.add
+              (Snackbar.toast () <| "Unexpected payload: " ++ info)
+              model.snackbar
+        in
+          (
+            { model | snackbar = snackbar' },
+            Cmd.batch
+              [
+                Cmd.map SnackbarMsg snackbarCmds,
+                Navigation.modifyUrl <| "/#!/error/unexpected-payload"
+              ]
+          )
       Page.PageInfoFetchSucceed _ ->
         case model.page of
           Just page ->
@@ -220,7 +278,15 @@ update msg model = case msg of
                 ]
               )
           Nothing ->
-            ( { model | toasts = "WTF: page is Nothing!" :: model.toasts }, Cmd.none )
+            let
+              (snackbar', snackbarCmds) = Snackbar.add
+                (Snackbar.toast () "WTF: page is Nothing!")
+                model.snackbar
+            in
+              (
+                { model | snackbar = snackbar' },
+                Cmd.map SnackbarMsg snackbarCmds
+              )
       _ ->
         case model.page of
           Just page ->
@@ -232,7 +298,15 @@ update msg model = case msg of
                 Cmd.map PageMsg pageCmds
               )
           Nothing ->
-            ( { model | toasts = "WTF: page is Nothing!" :: model.toasts }, Cmd.none )
+            let
+              (snackbar', snackbarCmds) = Snackbar.add
+                (Snackbar.toast () "WTF: page is Nothing!")
+                model.snackbar
+            in
+              (
+                { model | snackbar = snackbar' },
+                Cmd.map SnackbarMsg snackbarCmds
+              )
   SnackbarMsg snackbarMsg ->
     let
       (snackbar', snackbarCmds) = Snackbar.update snackbarMsg model.snackbar
@@ -260,18 +334,36 @@ urlUpdate : Result String { path : String, query : String } -> Model -> (Model, 
 urlUpdate result model =
   case result of
     Err info ->
-      (
-        { model | toasts = info :: model.toasts },
-        Navigation.modifyUrl "/#!/error/unknown-url"
-      )
+      let
+        (snackbar', snackbarCmds) = Snackbar.add
+          (Snackbar.toast () <| "Unknown URL: " ++ info)
+          model.snackbar
+      in
+        (
+          { model | snackbar = snackbar' },
+          Cmd.batch
+          [
+            Cmd.map SnackbarMsg snackbarCmds,
+            Navigation.modifyUrl "/#!/error/unknown-url"
+          ]
+        )
     Ok parsedUrl ->
       if
         parsedUrl.path == ""
       then
-        (
-          { model | toasts = "Redirect to /home" :: model.toasts },
-          Navigation.modifyUrl "/#!/home"
-        )
+        let
+          (snackbar', snackbarCmds) = Snackbar.add
+            (Snackbar.toast () <| "Redirect to /home")
+            model.snackbar
+        in
+          (
+            { model | snackbar = snackbar' },
+            Cmd.batch
+            [
+              Cmd.map SnackbarMsg snackbarCmds,
+              Navigation.modifyUrl "/#!/home"
+            ]
+          )
       else
         let
           (page, pageFx) = Page.init parsedUrl.path parsedUrl.query model.root
@@ -360,7 +452,10 @@ mainView model =
         {
           left = Footer.left []
             [
-              Footer.logo [] [ Footer.html <| span [ property "innerHTML" <| Json.Encode.string "&copy; 2016"] [] ]
+              Footer.logo []
+                [
+                  Footer.html <| span [ property "innerHTML" <| Json.Encode.string "&copy; 2016"] []
+                ]
             ],
           right = Footer.right []
             [
