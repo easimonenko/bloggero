@@ -43,6 +43,7 @@ type alias Model =
     title : String,
     navigation : List NavigationItem,
     toasts : List String,
+    snackbar : Snackbar.Model (),
     root : String
   }
 
@@ -60,6 +61,7 @@ type Msg =
   ConfigFetchFail Http.Error |
   ShowToast String |
   ShowErrorToast String |
+  SnackbarMsg (Snackbar.Msg ()) |
   PageMsg Page.Msg
 
 
@@ -76,6 +78,7 @@ init result =
         title = "",
         navigation = [],
         toasts = [],
+        snackbar = Snackbar.model,
         root = ""
       }
     loadConfig parsedUrl =
@@ -106,32 +109,80 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
   Mdl mdlMsg ->
     Material.update Mdl mdlMsg model
-  {--ConfigFetchSucceed config -> Snackbar.add (Snackbar.toast () config) model
-  ConfigFetchFail Http.Timeout -> Snackbar.add (Snackbar.toast () "Timeout") model
-  ConfigFetchFail Http.NetworkError -> Snackbar.add (Snackbar.toast () "NetworkError") model
-  ConfigFetchFail (Http.UnexpectedPayload str) -> Snackbar.add (Snackbar.toast () str) model
-  ConfigFetchFail (Http.BadResponse code str) -> Snackbar.add (Snackbar.toast () ((toString code) ++ str)) model-}
+  ConfigFetchFail Http.Timeout ->
+    let
+      (snackbar', snackbarCmds) =
+        Snackbar.add (Snackbar.toast () "Config do'nt loaded [Timeout].") model.snackbar
+    in
+      (
+        { model | snackbar = snackbar' },
+        Cmd.map SnackbarMsg snackbarCmds
+      )
+  ConfigFetchFail Http.NetworkError ->
+    let
+      (snackbar', snackbarCmds) =
+        Snackbar.add (Snackbar.toast () "Config do'nt loaded [NetworkError].") model.snackbar
+    in
+      (
+        { model | snackbar = snackbar' },
+        Cmd.map SnackbarMsg snackbarCmds
+      )
+  ConfigFetchFail (Http.UnexpectedPayload info) ->
+    let
+      (snackbar', snackbarCmds) =
+        Snackbar.add
+          (Snackbar.toast () <| "Config do'nt loaded [UnexpectedPayload]: " ++ info)
+          model.snackbar
+    in
+      (
+        { model | snackbar = snackbar' },
+        Cmd.map SnackbarMsg snackbarCmds
+      )
+  ConfigFetchFail (Http.BadResponse code info) ->
+    let
+      (snackbar', snackbarCmds) =
+        Snackbar.add
+          (Snackbar.toast () <| "Config do'nt loaded [BadResponse]: " ++ (toString code) ++ " - " ++ info)
+          model.snackbar
+    in
+      (
+        { model | snackbar = snackbar' },
+        Cmd.map SnackbarMsg snackbarCmds
+      )
   ConfigFetchSucceed pageUrl config ->
     let
-      blogTitle = case decodeString ("title" := string) config of
-        Ok str -> str
-        Err _ -> ""
+      blogTitle = decodeString ("title" := string) config
       navigationItemListDecoder = list
         (
           object3 NavigationItem
             ("title" := string) ("route" := string) (maybe ("icon" := string))
         )
-      blogNavigation = case decodeString ("navigation" := navigationItemListDecoder) config of
-        Ok list -> list
-        Err _ -> []
-      blogRoot = case decodeString ( "root" := string ) config of
-        Ok str -> str
-        Err _ -> ""
+      blogNavigation = decodeString ("navigation" := navigationItemListDecoder) config
+      blogRoot = decodeString ( "root" := string ) config
     in
-      (
-        { model | title = blogTitle, navigation = blogNavigation, root = blogRoot },
-        Cmd.batch [ title blogTitle, Navigation.modifyUrl <| "/#!" ++ pageUrl.path ]
-      )
+      case Result.map3 (,,) blogTitle blogNavigation blogRoot of
+        Ok (title', navigation', root') ->
+          let
+            (snackbar', snackbarCmds) = Snackbar.add (Snackbar.toast () "Config loaded.") model.snackbar
+          in
+            (
+              { model | title = title', navigation = navigation', root = root', snackbar = snackbar' },
+              Cmd.batch
+                [
+                  title title',
+                  Navigation.modifyUrl <| "/#!" ++ pageUrl.path,
+                  Cmd.map SnackbarMsg snackbarCmds
+                ]
+            )
+        Err info ->
+          let
+            (snackbar', snackbarCmds) =
+              Snackbar.add (Snackbar.toast () <| "Config do'nt loaded. " ++ info) model.snackbar
+          in
+            (
+              { model | snackbar = snackbar' },
+              Cmd.map SnackbarMsg snackbarCmds
+            )
   PageMsg pageMsg ->
     case pageMsg of
       Page.PageInfoFetchFail (Http.BadResponse statusCode statusInfo) ->
@@ -182,6 +233,15 @@ update msg model = case msg of
               )
           Nothing ->
             ( { model | toasts = "WTF: page is Nothing!" :: model.toasts }, Cmd.none )
+  SnackbarMsg snackbarMsg ->
+    let
+      (snackbar', snackbarCmds) = Snackbar.update snackbarMsg model.snackbar
+    in
+      (
+        { model | snackbar = snackbar' },
+        Cmd.map SnackbarMsg snackbarCmds
+      )
+
   _ ->
     ( model, Cmd.none )
 
@@ -306,7 +366,8 @@ mainView model =
             [
               Footer.socialButton [] []
             ]
-        }
+        },
+      Snackbar.view model.snackbar |> Html.App.map SnackbarMsg
     ]
 
 
