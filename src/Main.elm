@@ -487,7 +487,16 @@ mainView model =
             ],
           right = Footer.right []
             [
-              Footer.socialButton [] []
+              Footer.html <|
+                a
+                  [
+                    href "https://github.com/easimonenko/bloggero-elm-mdl",
+                    Html.Attributes.property "role" (Json.Encode.string "button"),
+                    Html.Attributes.title "GitHub"
+                  ]
+                  [
+                    i [class "fa fa-github fa-3x fa-hover", property "aria-hidden" (Json.Encode.bool True)] []
+                  ]
             ]
         },
       Snackbar.view model.snackbar |> Html.App.map SnackbarMsg
