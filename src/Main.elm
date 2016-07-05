@@ -404,7 +404,7 @@ headerView model =
                         Just page ->
                           page.title
                         Nothing ->
-                          "Page do'nt loaded"
+                          "Failed to load page."
                     )
                 ],
               Layout.spacer,
@@ -425,7 +425,7 @@ headerView model =
                         Just page ->
                           page.title
                         Nothing ->
-                          "Page do'nt loaded"
+                          "Failed to load page."
                     )
                 ]
             ]
@@ -457,7 +457,7 @@ drawerView model =
                 Just page ->
                   page.title
                 Nothing ->
-                  "Page do'nt loaded"
+                  "Failed to load page."
             )
         ],
         hr [] [],
@@ -473,7 +473,7 @@ mainView model =
             [
               case model.page of
                 Just page -> Html.App.map PageMsg (Page.view page)
-                Nothing -> text "Page do'nt loaded"
+                Nothing -> text "Failed to load page."
             ]
         ],
       Footer.mini []

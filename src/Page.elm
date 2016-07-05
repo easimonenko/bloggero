@@ -79,7 +79,7 @@ update msg model = case msg of
     )
   PageContentFetchFail error ->
     (
-      { model | content = "Page content do'nt loaded." },
+      { model | content = "The content of the page was not loaded." },
       Cmd.none
     )
   _ ->
