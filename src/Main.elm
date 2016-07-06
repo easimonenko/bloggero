@@ -205,7 +205,7 @@ update msg model = case msg of
             )
   PageMsg pageMsg ->
     case pageMsg of
-      Page.PageInfoFetchFail (Http.BadResponse statusCode statusInfo) ->
+      Page.PageInfoFetchFail pageUrl (Http.BadResponse statusCode statusInfo) ->
         let
           (snackbar', snackbarCmds) =
             Snackbar.add
@@ -220,37 +220,70 @@ update msg model = case msg of
                 Navigation.modifyUrl <| "/#!/error/bad-response/" ++ toString statusCode
               ]
           )
-      Page.PageInfoFetchFail Http.Timeout ->
+      Page.PageInfoFetchFail pageUrl Http.Timeout ->
         let
           (snackbar', snackbarCmds) =
             Snackbar.add
-              (Snackbar.toast () "Timeout.")
+              (Snackbar.toast () "Http Timeout.")
               model.snackbar
         in
-          (
-            { model | snackbar = snackbar' },
-            Cmd.batch
-              [
-                Cmd.map SnackbarMsg snackbarCmds,
-                Navigation.modifyUrl <| "/#!/error/timeout"
-              ]
-          )
-      Page.PageInfoFetchFail Http.NetworkError ->
+          case model.page of
+            Just page ->
+              let
+                (updatedPage, pageCmds) = Page.update pageMsg page
+              in
+                (
+                  { model | page = Just updatedPage, snackbar = snackbar' },
+                  Cmd.batch
+                  [
+                    title <| model.title ++ " - " ++ updatedPage.title,
+                    Cmd.map SnackbarMsg snackbarCmds,
+                    Cmd.map PageMsg pageCmds
+                  ]
+                )
+            Nothing ->
+              let
+                (snackbar', snackbarCmds) = Snackbar.add
+                  (Snackbar.toast () "WTF: page is Nothing!")
+                  model.snackbar
+              in
+                (
+                  { model | snackbar = snackbar' },
+                  Cmd.map SnackbarMsg snackbarCmds
+                )
+      Page.PageInfoFetchFail pageUrl Http.NetworkError ->
         let
           (snackbar', snackbarCmds) =
             Snackbar.add
               (Snackbar.toast () "Network error.")
               model.snackbar
+
         in
-          (
-            { model | snackbar = snackbar' },
-            Cmd.batch
-              [
-                Cmd.map SnackbarMsg snackbarCmds,
-                Navigation.modifyUrl <| "/#!/error/network-error"
-              ]
-          )
-      Page.PageInfoFetchFail (Http.UnexpectedPayload info) ->
+          case model.page of
+            Just page ->
+              let
+                (updatedPage, pageCmds) = Page.update pageMsg page
+              in
+                (
+                  { model | page = Just updatedPage, snackbar = snackbar' },
+                  Cmd.batch
+                  [
+                    title <| model.title ++ " - " ++ updatedPage.title,
+                    Cmd.map SnackbarMsg snackbarCmds,
+                    Cmd.map PageMsg pageCmds
+                  ]
+                )
+            Nothing ->
+              let
+                (snackbar', snackbarCmds) = Snackbar.add
+                  (Snackbar.toast () "WTF: page is Nothing!")
+                  model.snackbar
+              in
+                (
+                  { model | snackbar = snackbar' },
+                  Cmd.map SnackbarMsg snackbarCmds
+                )
+      Page.PageInfoFetchFail pageUrl (Http.UnexpectedPayload info) ->
         let
           (snackbar', snackbarCmds) =
             Snackbar.add

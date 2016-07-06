@@ -1,3 +1,0 @@
-# Http Timeout
-
-Http timeout.
