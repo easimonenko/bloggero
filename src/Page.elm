@@ -1,6 +1,7 @@
 module Page exposing (Model, Msg(..), init, update, view)
 
 import Html exposing (..)
+import Html.Attributes exposing (class, style)
 import Http
 import Json.Decode exposing (..)
 import Json.Encode
@@ -85,26 +86,33 @@ update msg model = case msg of
         model |
           title = "Network Error",
           content =
-            Options.div []
+            Options.div [ Options.cs "mdl-card mdl-shadow--2dp" ]
               [
-                h1 [] [ text "Network Error" ],
-                Options.div [Elevation.e2, Color.background (Color.color Color.Yellow Color.S50)]
-                  [
-                    p [] [ text "Network error: try refreshing the page later." ],
-                    p []
+                Options.div [ Options.cs "mdl-card__title" ]
+                [
+                  h1 [ class "mdl-card__title-text" ] [ text "Network Error" ]
+                ],
+                Options.div
+                [
+                  Options.cs "mdl-card__supporting-text",
+                  Color.background (Color.color Color.Yellow Color.S50)
+                ]
+                [
+                  text "Network error: try refreshing the page later."
+                ],
+                Options.div [ Options.cs "mdl-card__actions mdl-card--border" ]
+                [
+                  Button.render Mdl [0] model.mdl
                     [
-                      Button.render Mdl [0] model.mdl
-                        [
-                          Button.raised,
-                          Button.colored,
-                          Button.ripple,
-                          Button.onClick (ButtonPageInfoRefresh pageUrl)
-                        ]
-                        [
-                          text "Refresh"
-                        ]
+                      Button.raised,
+                      Button.colored,
+                      Button.ripple,
+                      Button.onClick (ButtonPageInfoRefresh pageUrl)
                     ]
-                  ]
+                    [
+                      text "Refresh"
+                    ]
+                ]
               ]
       },
       Cmd.none
@@ -115,27 +123,34 @@ update msg model = case msg of
         model |
           title = "Http Timeout",
           content =
-            Options.div []
+            Options.div [ Options.cs "mdl-card mdl-shadow--2dp" ]
               [
-                h1 [] [ text "Http Timeout" ],
-                Options.div [Elevation.e2, Color.background (Color.color Color.Yellow Color.S50)]
+                Options.div [ Options.cs "mdl-card__title" ]
+                [
+                  h1 [ class "mdl-card__title-text" ] [ text "Http Timeout" ]
+                ],
+                Options.div
+                [
+                  Options.cs "mdl-card__supporting-text",
+                  Color.background (Color.color Color.Yellow Color.S50)
+                ]
+                [
+                  text "Http timeout: try refreshing the page later."
+                ],
+                Options.div [ Options.cs "mdl-card__actions mdl-card--border" ]
                   [
-                    p [] [ text "Http timeout: try refreshing the page later." ],
-                    p []
-                    [
-                      Button.render Mdl [0] model.mdl
-                        [
-                          Button.raised,
-                          Button.colored,
-                          Button.ripple,
-                          Button.onClick (ButtonPageInfoRefresh pageUrl)
-                        ]
-                        [
-                          text "Refresh"
-                        ]
-                    ]
+                    Button.render Mdl [0] model.mdl
+                      [
+                        Button.raised,
+                        Button.colored,
+                        Button.ripple,
+                        Button.onClick (ButtonPageInfoRefresh pageUrl)
+                      ]
+                      [
+                        text "Refresh"
+                      ]
                   ]
-              ]
+                ]
       },
       Cmd.none
     )
