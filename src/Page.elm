@@ -13,8 +13,10 @@ import Material
 import Material.Button as Button
 import Material.Color as Color
 import Material.Elevation as Elevation
+import Material.Grid as Grid exposing (Device(..))
 import Material.Options as Options
 
+import Blog.PostPage
 
 type alias Model =
   {
@@ -179,4 +181,11 @@ update msg model = case msg of
 
 
 view : Model -> Html Msg
-view model = model.content
+view model =
+  Grid.grid []
+    [
+      Grid.cell [ Grid.size All 8, Grid.offset Desktop 2, Elevation.e3 ]
+        [
+          model.content
+        ]
+    ]

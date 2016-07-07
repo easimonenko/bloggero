@@ -2,7 +2,7 @@ port module Main exposing (main)
 
 import Html exposing (..)
 import Html.App
-import Html.Attributes exposing (class, classList, href, property)
+import Html.Attributes exposing (class, classList, href, property, style)
 
 import Http
 import Json.Decode exposing (..)
@@ -12,16 +12,12 @@ import String
 import Task
 
 import Material
-import Material.Elevation as Elevation
 import Material.Footer as Footer
-import Material.Grid as Grid exposing (Device(..))
 import Material.Icon as Icon
 import Material.Layout as Layout
-import Material.Options as Options
 import Material.Snackbar as Snackbar
 
 import Navigation
-import UrlParser exposing ((</>))
 
 import Page
 
@@ -46,7 +42,8 @@ type alias Model =
     navigation : List NavigationItem,
     toasts : List String,
     snackbar : Snackbar.Model (),
-    root : String
+    root : String,
+    isConfigLoaded : Maybe Bool
   }
 
 type alias NavigationItem =
@@ -61,8 +58,6 @@ type Msg =
   Mdl Material.Msg |
   ConfigFetchSucceed { path : String, query : String } String |
   ConfigFetchFail Http.Error |
-  ShowToast String |
-  ShowErrorToast String |
   SnackbarMsg (Snackbar.Msg ()) |
   PageMsg Page.Msg
 
@@ -81,7 +76,8 @@ init result =
         navigation = [],
         toasts = [],
         snackbar = Snackbar.model,
-        root = ""
+        root = "",
+        isConfigLoaded = Nothing
       }
     loadConfig parsedUrl =
       Task.perform ConfigFetchFail (ConfigFetchSucceed parsedUrl) (Http.getString "/config.json")
@@ -132,41 +128,41 @@ update msg model = case msg of
   ConfigFetchFail Http.Timeout ->
     let
       (snackbar', snackbarCmds) =
-        Snackbar.add (Snackbar.toast () "Config do'nt loaded [Timeout].") model.snackbar
+        Snackbar.add (Snackbar.toast () "The config is not loaded [Timeout].") model.snackbar
     in
       (
-        { model | snackbar = snackbar' },
+        { model | snackbar = snackbar', isConfigLoaded = Just False },
         Cmd.map SnackbarMsg snackbarCmds
       )
   ConfigFetchFail Http.NetworkError ->
     let
       (snackbar', snackbarCmds) =
-        Snackbar.add (Snackbar.toast () "Config do'nt loaded [NetworkError].") model.snackbar
+        Snackbar.add (Snackbar.toast () "The config is not loaded [NetworkError].") model.snackbar
     in
       (
-        { model | snackbar = snackbar' },
+        { model | snackbar = snackbar', isConfigLoaded = Just False },
         Cmd.map SnackbarMsg snackbarCmds
       )
   ConfigFetchFail (Http.UnexpectedPayload info) ->
     let
       (snackbar', snackbarCmds) =
         Snackbar.add
-          (Snackbar.toast () <| "Config do'nt loaded [UnexpectedPayload]: " ++ info)
+          (Snackbar.toast () <| "The config is not loaded [UnexpectedPayload]: " ++ info)
           model.snackbar
     in
       (
-        { model | snackbar = snackbar' },
+        { model | snackbar = snackbar', isConfigLoaded = Just False },
         Cmd.map SnackbarMsg snackbarCmds
       )
   ConfigFetchFail (Http.BadResponse code info) ->
     let
       (snackbar', snackbarCmds) =
         Snackbar.add
-          (Snackbar.toast () <| "Config do'nt loaded [BadResponse]: " ++ (toString code) ++ " - " ++ info)
+          (Snackbar.toast () <| "The config is not loaded [BadResponse]: " ++ (toString code) ++ " - " ++ info)
           model.snackbar
     in
       (
-        { model | snackbar = snackbar' },
+        { model | snackbar = snackbar', isConfigLoaded = Just False },
         Cmd.map SnackbarMsg snackbarCmds
       )
   ConfigFetchSucceed pageUrl config ->
@@ -183,10 +179,18 @@ update msg model = case msg of
       case Result.map3 (,,) blogTitle blogNavigation blogRoot of
         Ok (title', navigation', root') ->
           let
-            (snackbar', snackbarCmds) = Snackbar.add (Snackbar.toast () "Config loaded.") model.snackbar
+            (snackbar', snackbarCmds) =
+              Snackbar.add (Snackbar.toast () "The config is loaded.") model.snackbar
           in
             (
-              { model | title = title', navigation = navigation', root = root', snackbar = snackbar' },
+              {
+                model |
+                  title = title',
+                  navigation = navigation',
+                  root = root',
+                  snackbar = snackbar',
+                  isConfigLoaded = Just True
+              },
               Cmd.batch
                 [
                   title title',
@@ -197,10 +201,10 @@ update msg model = case msg of
         Err info ->
           let
             (snackbar', snackbarCmds) =
-              Snackbar.add (Snackbar.toast () <| "Config do'nt loaded. " ++ info) model.snackbar
+              Snackbar.add (Snackbar.toast () <| "The config is not loaded. " ++ info) model.snackbar
           in
             (
-              { model | snackbar = snackbar' },
+              { model | snackbar = snackbar', isConfigLoaded = Just False },
               Cmd.map SnackbarMsg snackbarCmds
             )
   PageMsg pageMsg ->
@@ -351,9 +355,6 @@ update msg model = case msg of
         Cmd.map SnackbarMsg snackbarCmds
       )
 
-  _ ->
-    ( model, Cmd.none )
-
 
 subscriptions = .mdl >> Layout.subs Mdl
 
@@ -409,6 +410,7 @@ urlUpdate result model =
           )
 
 
+headerView : Model -> List (Html Msg)
 headerView model =
   let
     makeLink item =
@@ -466,6 +468,7 @@ headerView model =
     ]
 
 
+drawerView : Model -> List (Html Msg)
 drawerView model =
   let
     makeLink item =
@@ -498,42 +501,104 @@ drawerView model =
     ]
 
 
+mainView : Model -> List (Html Msg)
 mainView model =
-    [
-      Grid.grid []
-        [
-          Grid.cell [ Grid.size All 8, Grid.offset Desktop 2, Elevation.e3 ]
-            [
-              case model.page of
-                Just page -> Html.App.map PageMsg (Page.view page)
-                Nothing -> text "Failed to load page."
-            ]
-        ],
-      Footer.mini []
-        {
-          left = Footer.left []
-            [
-              Footer.logo []
+  [
+    div []
+      [
+        case model.isConfigLoaded of
+          Just True ->
+            case model.page of
+              Just page -> Html.App.map PageMsg (Page.view page)
+              Nothing -> text "Failed to load page."
+          Just False ->
+            div
+              [
+                style
+                  [
+                    ("width", "100%"),
+                    ("height", "100%"),
+                    ("position", "fixed"),
+                    ("top", "0"),
+                    ("left", "0"),
+                    ("display", "flex"),
+                    ("align-items", "center"),
+                    ("justify-content", "center"),
+                    ("overflow", "auto")
+                  ]
+              ]
+              [
+                div
+                  [
+                    style
+                      [
+                        ("background", "lightyellow")
+                      ]
+                  ]
+                  [
+                    text "The config is not loaded. Restart the application later or contact the developer."
+                  ]
+              ]
+          Nothing ->
+            div
+              [
+                style
+                  [
+                    ("width", "100%"),
+                    ("height", "100%"),
+                    ("position", "fixed"),
+                    ("top", "0"),
+                    ("left", "0"),
+                    ("display", "flex"),
+                    ("align-items", "center"),
+                    ("justify-content", "center"),
+                    ("overflow", "auto")
+                  ]
+              ]
+              [
+                div
+                  [
+                    style
+                      [
+                        ("background", "lightgreen")
+                      ]
+                  ]
+                  [
+                    text "The application is downloaded. Please wait a bit."
+                  ]
+              ]
+      ],
+    Layout.spacer,
+    Footer.mini []
+      {
+        left = Footer.left []
+          [
+            Footer.logo []
+              [
+                Footer.html <| span [ property "innerHTML" <| Json.Encode.string "&copy; 2016"] []
+              ]
+          ],
+        right = Footer.right []
+          [
+            Footer.html <|
+              a
                 [
-                  Footer.html <| span [ property "innerHTML" <| Json.Encode.string "&copy; 2016"] []
+                  href "https://github.com/easimonenko/bloggero-elm-mdl",
+                  Html.Attributes.property "role" (Json.Encode.string "button"),
+                  Html.Attributes.title "GitHub"
                 ]
-            ],
-          right = Footer.right []
-            [
-              Footer.html <|
-                a
-                  [
-                    href "https://github.com/easimonenko/bloggero-elm-mdl",
-                    Html.Attributes.property "role" (Json.Encode.string "button"),
-                    Html.Attributes.title "GitHub"
-                  ]
-                  [
-                    i [class "fa fa-github fa-3x fa-hover", property "aria-hidden" (Json.Encode.bool True)] []
-                  ]
-            ]
-        },
-      Snackbar.view model.snackbar |> Html.App.map SnackbarMsg
-    ]
+                [
+                  i
+                    [
+                      class "fa fa-github fa-3x fa-hover",
+                      property "aria-hidden" (Json.Encode.bool True)
+                    ]
+                    []
+                ]
+          ]
+      },
+    Snackbar.view model.snackbar |> Html.App.map SnackbarMsg
+  ]
 
 
 tabsView = ( [], [] )
