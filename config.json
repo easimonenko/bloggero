@@ -1,19 +1,29 @@
 {
   "title": "My blog",
-  "navigation": [
+  "root": "/sample",
+  "mode": "development",
+  "sections": [
     {
       "title": "Home",
       "route": "/home",
-      "icon": "home"
+      "icon": "home",
+      "placement": [
+        "header", "drawer", "footer", "sitemap"
+      ]
     },
     {
       "title": "Blog",
-      "route": "/blog"
+      "route": "/blog",
+      "placement": [
+        "header", "drawer", "footer", "sitemap"
+      ]
     },
     {
       "title": "About",
-      "route": "/about"
+      "route": "/about",
+      "placement": [
+        "header", "drawer", "footer", "sitemap"
+      ]
     }
-  ],
-  "root": "/sample"
+  ]
 }

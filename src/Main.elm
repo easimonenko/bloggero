@@ -4,10 +4,12 @@ import Html exposing (..)
 import Html.App
 import Html.Attributes exposing (class, classList, href, property, style)
 
+import Html.Attributes.Extra exposing (innerHtml)
+
 import Http
-import Json.Decode exposing (..)
+import Json.Decode exposing ((:=), decodeString, list, maybe, object4, string)
 import Json.Encode
-import List exposing (head, tail)
+import List exposing (filter, head, map, member, tail)
 import String
 import Task
 
@@ -38,21 +40,37 @@ type alias Model =
   {
     mdl : Material.Model,
     page : Maybe Page.Model,
-    title : String,
-    navigation : List NavigationItem,
-    toasts : List String,
     snackbar : Snackbar.Model (),
-    root : String,
-    isConfigLoaded : Maybe Bool
+    config :
+      {
+        title : String,
+        root : String,
+        mode : Mode,
+        sections : List SectionItem
+      },
+    isConfigLoaded : Maybe Bool,
+    debugMessages : List String
   }
 
-type alias NavigationItem =
+type Mode =
+  DevelopmentMode |
+  ProductionMode |
+  UnknownMode
+
+type alias SectionItem =
   {
     title : String,
     route : String,
-    icon : Maybe String
+    icon : Maybe String,
+    placement : List Placement
   }
 
+type Placement =
+  HeaderPlacement |
+  DrawerPlacement |
+  FooterPlacement |
+  SiteMapPlacement |
+  UnknownPlacement
 
 type Msg =
   Mdl Material.Msg |
@@ -71,13 +89,17 @@ init result =
     model =
       {
         mdl = Material.model,
-        page = Nothing,
-        title = "",
-        navigation = [],
-        toasts = [],
         snackbar = Snackbar.model,
-        root = "",
-        isConfigLoaded = Nothing
+        page = Nothing,
+        config =
+          {
+            title = "",
+            root = "",
+            mode = DevelopmentMode,
+            sections = []
+          },
+        isConfigLoaded = Nothing,
+        debugMessages = []
       }
     loadConfig parsedUrl =
       Task.perform ConfigFetchFail (ConfigFetchSucceed parsedUrl) (Http.getString "/config.json")
@@ -168,16 +190,41 @@ update msg model = case msg of
   ConfigFetchSucceed pageUrl config ->
     let
       blogTitle = decodeString ("title" := string) config
-      navigationItemListDecoder = list
+      blogRoot = decodeString ("root" := string) config
+      blogMode = decodeString
         (
-          object3 NavigationItem
-            ("title" := string) ("route" := string) (maybe ("icon" := string))
+          "mode" := Json.Decode.map
+            (\
+              item -> case item of
+                "development" -> DevelopmentMode
+                "production" -> ProductionMode
+                _ -> UnknownMode
+            )
+            string
         )
-      blogNavigation = decodeString ("navigation" := navigationItemListDecoder) config
-      blogRoot = decodeString ( "root" := string ) config
+        config
+      placementItemListDecoder = list
+        (
+          Json.Decode.map
+            (\
+              item -> case item of
+                "header" -> HeaderPlacement
+                "drawer" -> DrawerPlacement
+                "footer" -> FooterPlacement
+                "sitemap" -> SiteMapPlacement
+                _ -> UnknownPlacement
+            )
+            string
+        )
+      sectionItemListDecoder = list
+        (
+          object4 SectionItem
+            ("title" := string) ("route" := string) (maybe ("icon" := string)) ("placement" := placementItemListDecoder)
+        )
+      blogSections = decodeString ("sections" := sectionItemListDecoder) config
     in
-      case Result.map3 (,,) blogTitle blogNavigation blogRoot of
-        Ok (title', navigation', root') ->
+      case Result.map4 (,,,) blogTitle blogRoot blogMode blogSections of
+        Ok (title', root', mode', sections') ->
           let
             (snackbar', snackbarCmds) =
               Snackbar.add (Snackbar.toast () "The config is loaded.") model.snackbar
@@ -185,10 +232,18 @@ update msg model = case msg of
             (
               {
                 model |
-                  title = title',
-                  navigation = navigation',
-                  root = root',
                   snackbar = snackbar',
+                  config =
+                    let
+                      modelConfig = model.config
+                    in
+                      {
+                        modelConfig |
+                          title = title',
+                          root = root',
+                          mode = mode',
+                          sections = sections'
+                      },
                   isConfigLoaded = Just True
               },
               Cmd.batch
@@ -204,7 +259,24 @@ update msg model = case msg of
               Snackbar.add (Snackbar.toast () <| "The config is not loaded. " ++ info) model.snackbar
           in
             (
-              { model | snackbar = snackbar', isConfigLoaded = Just False },
+              {
+                model |
+                  snackbar = snackbar',
+                  config =
+                    let
+                      modelConfig = model.config
+                    in
+                      {
+                        modelConfig |
+                          mode = DevelopmentMode
+                      },
+                  isConfigLoaded = Just False,
+                  debugMessages =
+                    let
+                      modelDebugMessages = model.debugMessages
+                    in
+                      info :: modelDebugMessages
+              },
               Cmd.map SnackbarMsg snackbarCmds
             )
   PageMsg pageMsg ->
@@ -240,7 +312,7 @@ update msg model = case msg of
                   { model | page = Just updatedPage, snackbar = snackbar' },
                   Cmd.batch
                   [
-                    title <| model.title ++ " - " ++ updatedPage.title,
+                    title <| model.config.title ++ " - " ++ updatedPage.title,
                     Cmd.map SnackbarMsg snackbarCmds,
                     Cmd.map PageMsg pageCmds
                   ]
@@ -272,7 +344,7 @@ update msg model = case msg of
                   { model | page = Just updatedPage, snackbar = snackbar' },
                   Cmd.batch
                   [
-                    title <| model.title ++ " - " ++ updatedPage.title,
+                    title <| model.config.title ++ " - " ++ updatedPage.title,
                     Cmd.map SnackbarMsg snackbarCmds,
                     Cmd.map PageMsg pageCmds
                   ]
@@ -312,7 +384,7 @@ update msg model = case msg of
                 { model | page = Just updatedPage},
                 Cmd.batch
                 [
-                  title <| model.title ++ " - " ++ updatedPage.title,
+                  title <| model.config.title ++ " - " ++ updatedPage.title,
                   Cmd.map PageMsg pageCmds
                 ]
               )
@@ -402,7 +474,7 @@ urlUpdate result model =
           )
       else
         let
-          (page, pageFx) = Page.init parsedUrl.path parsedUrl.query model.root
+          (page, pageFx) = Page.init parsedUrl.path parsedUrl.query model.config.root
         in
           (
             { model | page = Just page },
@@ -430,20 +502,32 @@ headerView model =
           Layout.row []
             [
               Layout.title []
-                [
-                  text model.title,
-                  span [ property "innerHTML" <| Json.Encode.string "&nbsp;::&nbsp;"] [],
-                  text
-                    (
-                      case model.page of
-                        Just page ->
-                          page.title
-                        Nothing ->
-                          "Failed to load page."
-                    )
-                ],
+                (
+                  case model.isConfigLoaded of
+                    Just True ->
+                      [
+                        text model.config.title,
+                        span [ innerHtml "&nbsp;::&nbsp;"] [],
+                        text
+                          (
+                            case model.page of
+                              Just page ->
+                                page.title
+                              Nothing ->
+                                "Failed to load page."
+                          )
+                      ]
+                    _ ->
+                      [
+                        text ""
+                      ]
+                ),
               Layout.spacer,
-              Layout.navigation [] (List.map makeLink model.navigation)
+              Layout.navigation []
+                (
+                  map makeLink <|
+                    filter (\item -> member HeaderPlacement item.placement) model.config.sections
+                )
             ]
         ],
       div [class "mdl-layout--small-screen-only"]
@@ -452,8 +536,8 @@ headerView model =
             [
               Layout.title []
                 [
-                  text model.title,
-                  span [ property "innerHTML" <| Json.Encode.string "&nbsp;::&nbsp;"] [],
+                  text model.config.title,
+                  span [ innerHtml "&nbsp;::&nbsp;"] [],
                   text
                     (
                       case model.page of
@@ -485,8 +569,8 @@ drawerView model =
     [
       Layout.title []
         [
-          text model.title,
-          span [ property "innerHTML" <| Json.Encode.string "&nbsp;::&nbsp;"] [],
+          text model.config.title,
+          span [ innerHtml "&nbsp;::&nbsp;"] [],
           text
             (
               case model.page of
@@ -497,7 +581,11 @@ drawerView model =
             )
         ],
         hr [] [],
-        Layout.navigation [] (List.map makeLink model.navigation)
+        Layout.navigation []
+          (
+            map makeLink <|
+              filter (\item -> member DrawerPlacement item.placement) model.config.sections
+          )
     ]
 
 
@@ -536,7 +624,14 @@ mainView model =
                       ]
                   ]
                   [
-                    text "The config is not loaded. Restart the application later or contact the developer."
+                    text "The config is not loaded. Restart the application later or contact the developer.",
+                    case model.config.mode of
+                      DevelopmentMode ->
+                        text <| " --> " ++ String.join " --> " model.debugMessages
+                      ProductionMode ->
+                        text ""
+                      UnknownMode ->
+                        text " --> Unknown mode."
                   ]
               ]
           Nothing ->
