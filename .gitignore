@@ -6,3 +6,5 @@ repl-temp-*
 app.js
 # node.js files
 npm-debug.log
+# visual studio code files
+.vscode
