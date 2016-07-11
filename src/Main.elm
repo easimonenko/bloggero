@@ -7,11 +7,14 @@ import Html.Attributes exposing (class, classList, href, property, style)
 import Html.Attributes.Extra exposing (innerHtml)
 
 import Http
-import Json.Decode exposing ((:=), decodeString, list, maybe, object4, string)
+import Json.Decode exposing ((:=), decodeString, list, maybe, object5, string)
 import Json.Encode
 import List exposing (filter, head, map, member, tail)
-import String
+import Maybe exposing (withDefault)
+import String exposing (split)
 import Task
+
+import List.Extra exposing (find)
 
 import Material
 import Material.Button as Button
@@ -50,7 +53,8 @@ type alias Model =
         sections : List SectionItem
       },
     isConfigLoaded : Maybe Bool,
-    debugMessages : List String
+    debugMessages : List String,
+    sectionId : Maybe String
   }
 
 type Mode =
@@ -60,6 +64,7 @@ type Mode =
 
 type alias SectionItem =
   {
+    id : String,
     title : String,
     route : String,
     icon : Maybe String,
@@ -101,7 +106,8 @@ init result =
             sections = []
           },
         isConfigLoaded = Nothing,
-        debugMessages = []
+        debugMessages = [],
+        sectionId = Nothing
       }
     loadConfig parsedUrl =
       Task.perform ConfigFetchFail (ConfigFetchSucceed parsedUrl) (Http.getString "/config.json")
@@ -220,8 +226,12 @@ update msg model = case msg of
         )
       sectionItemListDecoder = list
         (
-          object4 SectionItem
-            ("title" := string) ("route" := string) (maybe ("icon" := string)) ("placement" := placementItemListDecoder)
+          object5 SectionItem
+            ("id" := string)
+            ("title" := string)
+            ("route" := string)
+            (maybe ("icon" := string))
+            ("placement" := placementItemListDecoder)
         )
       blogSections = decodeString ("sections" := sectionItemListDecoder) config
     in
@@ -314,7 +324,6 @@ update msg model = case msg of
                   { model | page = Just updatedPage, snackbar = snackbar' },
                   Cmd.batch
                   [
-                    title <| model.config.title ++ " - " ++ updatedPage.title,
                     Cmd.map SnackbarMsg snackbarCmds,
                     Cmd.map PageMsg pageCmds
                   ]
@@ -346,7 +355,6 @@ update msg model = case msg of
                   { model | page = Just updatedPage, snackbar = snackbar' },
                   Cmd.batch
                   [
-                    title <| model.config.title ++ " - " ++ updatedPage.title,
                     Cmd.map SnackbarMsg snackbarCmds,
                     Cmd.map PageMsg pageCmds
                   ]
@@ -386,7 +394,6 @@ update msg model = case msg of
                 { model | page = Just updatedPage},
                 Cmd.batch
                 [
-                  title <| model.config.title ++ " - " ++ updatedPage.title,
                   Cmd.map PageMsg pageCmds
                 ]
               )
@@ -455,6 +462,7 @@ urlUpdate result model =
           { model | snackbar = snackbar' },
           Cmd.batch
           [
+            title <| model.config.title ++ " - Unknown URL",
             Cmd.map SnackbarMsg snackbarCmds,
             Navigation.modifyUrl "/#!/error/unknown-url"
           ]
@@ -479,10 +487,34 @@ urlUpdate result model =
       else
         let
           (page, pageFx) = Page.init parsedUrl.path parsedUrl.query model.config.root
+          section =
+            find
+              (\
+                item ->
+                  item.route
+                    == "/" ++ withDefault "" (head <| withDefault [] (tail (split "/" parsedUrl.path)))
+              )
+              model.config.sections
         in
           (
-            { model | page = Just page },
-            Cmd.map PageMsg pageFx
+            {
+              model |
+                page = Just page,
+                sectionId =
+                  case section of
+                    Just s ->
+                      Just s.id
+                    Nothing ->
+                      Nothing
+            },
+            Cmd.batch
+            [
+              title <| model.config.title ++ case section of
+                Just s ->
+                  " - " ++ s.title
+                Nothing -> "",
+              Cmd.map PageMsg pageFx
+            ]
           )
 
 
@@ -509,22 +541,24 @@ headerView model =
                 (
                   case model.isConfigLoaded of
                     Just True ->
-                      [
-                        text model.config.title,
-                        span [ innerHtml "&nbsp;::&nbsp;"] [],
-                        text
-                          (
-                            case model.page of
-                              Just page ->
-                                page.title
-                              Nothing ->
-                                "Failed to load page."
-                          )
-                      ]
+                      case model.sectionId of
+                        Just sectionId ->
+                          [
+                            text model.config.title,
+                            span [ innerHtml "&nbsp;::&nbsp;" ] [],
+                            text
+                              (
+                                case find (\item -> item.id == sectionId) model.config.sections of
+                                  Just section ->
+                                    section.title
+                                  Nothing ->
+                                    ""
+                              )
+                          ]
+                        Nothing ->
+                          [ text "" ]
                     _ ->
-                      [
-                        text ""
-                      ]
+                      [ text "" ]
                 ),
               Layout.spacer,
               Layout.navigation []
@@ -539,18 +573,28 @@ headerView model =
           Layout.row []
             [
               Layout.title []
-                [
-                  text model.config.title,
-                  span [ innerHtml "&nbsp;::&nbsp;"] [],
-                  text
-                    (
-                      case model.page of
-                        Just page ->
-                          page.title
+                (
+                  case model.isConfigLoaded of
+                    Just True ->
+                      case model.sectionId of
+                        Just sectionId ->
+                          [
+                            text model.config.title,
+                            span [ innerHtml "&nbsp;::&nbsp;"] [],
+                            text
+                              (
+                                case find (\item -> item.id == sectionId) model.config.sections of
+                                  Just section ->
+                                    section.title
+                                  Nothing ->
+                                    ""
+                              )
+                          ]
                         Nothing ->
-                          "Failed to load page."
-                    )
-                ]
+                          [ text "" ]
+                    _ ->
+                      [ text ""]
+                )
             ]
         ]
     ]
@@ -573,16 +617,27 @@ drawerView model =
     [
       Layout.title []
         [
-          text model.config.title,
-          span [ innerHtml "&nbsp;::&nbsp;"] [],
-          text
-            (
-              case model.page of
-                Just page ->
-                  page.title
+          case model.isConfigLoaded of
+            Just True ->
+              case model.sectionId of
+                Just sectionId ->
+                  span []
+                  [
+                    text model.config.title,
+                    span [ innerHtml "&nbsp;::&nbsp;"] [],
+                    text
+                      (
+                        case find (\item -> item.id == sectionId) model.config.sections of
+                          Just section ->
+                            section.title
+                          Nothing ->
+                            ""
+                      )
+                  ]
                 Nothing ->
-                  "Failed to load page."
-            ),
+                  text ""
+            _ ->
+              text "",
           Button.render Mdl [0] model.mdl
             [
               Button.icon,
@@ -591,7 +646,7 @@ drawerView model =
               Button.onClick HideDrawer
             ]
             [
-              Icon.i "keyboard_arrow_left"
+              Icon.i "close"
             ]
         ],
         hr [] [],
@@ -684,7 +739,7 @@ mainView model =
           [
             Footer.logo []
               [
-                Footer.html <| span [ property "innerHTML" <| Json.Encode.string "&copy; 2016"] []
+                Footer.html <| span [ innerHtml "&copy; 2016" ] []
               ]
           ],
         right = Footer.right []

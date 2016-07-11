@@ -4,6 +4,7 @@
   "mode": "development",
   "sections": [
     {
+      "id": "home",
       "title": "Home",
       "route": "/home",
       "icon": "home",
@@ -12,6 +13,7 @@
       ]
     },
     {
+      "id": "blog",
       "title": "Blog",
       "route": "/blog",
       "placement": [
@@ -19,6 +21,7 @@
       ]
     },
     {
+      "id": "about",
       "title": "About",
       "route": "/about",
       "placement": [
