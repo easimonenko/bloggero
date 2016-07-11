@@ -500,12 +500,7 @@ urlUpdate result model =
             {
               model |
                 page = Just page,
-                sectionId =
-                  case section of
-                    Just s ->
-                      Just s.id
-                    Nothing ->
-                      Nothing
+                sectionId = Maybe.map .id section
             },
             Cmd.batch
             [
@@ -513,7 +508,13 @@ urlUpdate result model =
                 Just s ->
                   " - " ++ s.title
                 Nothing -> "",
-              Cmd.map PageMsg pageFx
+              Cmd.map PageMsg pageFx,
+              if
+                model.mdl.layout.isDrawerOpen
+              then
+                Task.perform identity identity (Task.succeed HideDrawer)
+              else
+                Cmd.none
             ]
           )
 
@@ -526,8 +527,8 @@ headerView model =
         [
           (
             case item.icon of
-              Nothing -> span [] [text ""]
               Just iconName -> Icon.i iconName
+              Nothing -> span [] [text ""]
           ),
           text item.title
         ]
@@ -608,8 +609,8 @@ drawerView model =
         [
           (
             case item.icon of
-              Nothing -> span [] [text ""]
               Just iconName -> Icon.i iconName
+              Nothing -> span [] [text ""]
           ),
           text item.title
         ]
