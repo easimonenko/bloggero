@@ -14,6 +14,7 @@ import String
 import Task
 
 import Material
+import Material.Button as Button
 import Material.Footer as Footer
 import Material.Icon as Icon
 import Material.Layout as Layout
@@ -77,7 +78,8 @@ type Msg =
   ConfigFetchSucceed { path : String, query : String } String |
   ConfigFetchFail Http.Error |
   SnackbarMsg (Snackbar.Msg ()) |
-  PageMsg Page.Msg
+  PageMsg Page.Msg |
+  HideDrawer
 
 
 port title : String -> Cmd msg
@@ -426,6 +428,8 @@ update msg model = case msg of
         { model | snackbar = snackbar' },
         Cmd.map SnackbarMsg snackbarCmds
       )
+  HideDrawer ->
+    ( model, Task.perform identity identity (Task.succeed (Layout.toggleDrawer Mdl))  )
 
 
 subscriptions = .mdl >> Layout.subs Mdl
@@ -578,7 +582,17 @@ drawerView model =
                   page.title
                 Nothing ->
                   "Failed to load page."
-            )
+            ),
+          Button.render Mdl [0] model.mdl
+            [
+              Button.icon,
+              Button.colored,
+              Button.ripple,
+              Button.onClick HideDrawer
+            ]
+            [
+              Icon.i "keyboard_arrow_left"
+            ]
         ],
         hr [] [],
         Layout.navigation []
