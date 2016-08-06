@@ -79,7 +79,7 @@ type Placement =
   UnknownPlacement
 
 type Msg =
-  Mdl Material.Msg |
+  Mdl (Material.Msg Msg) |
   ConfigFetchSucceed { path : String, query : String } String |
   ConfigFetchFail Http.Error |
   SnackbarMsg (Snackbar.Msg ()) |
@@ -154,7 +154,7 @@ init result =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
   Mdl mdlMsg ->
-    Material.update Mdl mdlMsg model
+    Material.update mdlMsg model
   ConfigFetchFail Http.Timeout ->
     let
       (snackbar', snackbarCmds) =
@@ -662,8 +662,6 @@ drawerView model =
 mainView : Model -> List (Html Msg)
 mainView model =
   [
-    div []
-      [
         case model.isConfigLoaded of
           Just True ->
             case model.page of
@@ -731,8 +729,7 @@ mainView model =
                   [
                     text "The application is downloaded. Please wait a bit."
                   ]
-              ]
-      ],
+              ],
     Layout.spacer,
     Footer.mini []
       {

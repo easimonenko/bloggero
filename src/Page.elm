@@ -32,7 +32,7 @@ type alias Model =
 
 
 type Msg =
-  Mdl Material.Msg |
+  Mdl (Material.Msg Msg) |
   PageInfoFetchSucceed String |
   PageInfoFetchFail { path : String, query : String } Http.Error |
   PageContentFetchSucceed String |
@@ -63,7 +63,7 @@ init path query root =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
   Mdl mdlMsg ->
-    Material.update Mdl mdlMsg model
+    Material.update mdlMsg model
   PageInfoFetchSucceed pageInfo ->
     let
       pageTitle =

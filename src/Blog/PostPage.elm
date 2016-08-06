@@ -14,7 +14,7 @@ type alias Model =
   }
 
 type Msg =
-  Mdl Material.Msg
+  Mdl (Material.Msg Msg)
 
 
 init root path query =
