@@ -1,6 +1,6 @@
 {
   "title": "My blog",
-  "root": "/sample",
+  "root": "",
   "mode": "development",
   "sections": [
     {

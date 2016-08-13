@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>My Blog</title>
+    <link rel="icon" type="image/vnd.microsoft.icon" href="/favicon.ico"/>
+    <link rel="stylesheet" href="/css/global.css"/>
+  </head>
+  <body>
+    <script src="/app.js"></script>
+    <script>
+      var app = Elm.Main.fullscreen();
+      app.ports.title.subscribe(function (title) {
+        document.title = title;
+      });
+    </script>
+  </body>
+</html>
