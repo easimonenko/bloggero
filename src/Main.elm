@@ -19,6 +19,7 @@ import Material.Icon as Icon
 import Material.Layout as Layout
 import Material.Snackbar as Snackbar
 import Navigation
+import Alert
 import Page
 
 
@@ -35,6 +36,7 @@ main =
 
 type alias Model =
     { mdl : Material.Model
+    , alert : Alert.Model
     , page : Maybe Page.Model
     , snackbar : Snackbar.Model ()
     , config :
@@ -77,6 +79,7 @@ type Msg
     | ConfigFetchSucceed { path : String, query : String } String
     | ConfigFetchFail Http.Error
     | SnackbarMsg (Snackbar.Msg ())
+    | AlertMsg Alert.Msg
     | PageMsg Page.Msg
     | HideDrawer
 
@@ -87,9 +90,13 @@ port title : String -> Cmd msg
 init : Result String { path : String, query : String } -> ( Model, Cmd Msg )
 init result =
     let
+        ( alert, alertCmds ) =
+            Alert.init Alert.InfoLevel "The application is downloaded. Please wait a bit."
+
         model =
             { mdl = Material.model
             , snackbar = Snackbar.model
+            , alert = alert
             , page = Nothing
             , config =
                 { title = ""
@@ -115,6 +122,7 @@ init result =
                     , Cmd.batch
                         [ Layout.sub0 Mdl
                         , Cmd.map SnackbarMsg snackbarCmds
+                        , Cmd.map AlertMsg alertCmds
                         , loadConfig { path = "/error/unknown-url", query = "" }
                         ]
                     )
@@ -129,12 +137,13 @@ init result =
                         , Cmd.batch
                             [ Layout.sub0 Mdl
                             , Cmd.map SnackbarMsg snackbarCmds
+                            , Cmd.map AlertMsg alertCmds
                             , loadConfig { path = "/home", query = pageUrl.query }
                             ]
                         )
                 else
                     ( model
-                    , Cmd.batch [ Layout.sub0 Mdl, loadConfig pageUrl ]
+                    , Cmd.batch [ Layout.sub0 Mdl, loadConfig pageUrl, Cmd.map AlertMsg alertCmds ]
                     )
 
 
@@ -146,7 +155,7 @@ update msg model =
 
         ConfigFetchFail httpError ->
             let
-                snackbarMessage =
+                message =
                     "The config is not loaded "
                         ++ case httpError of
                             Http.Timeout ->
@@ -161,12 +170,18 @@ update msg model =
                             Http.BadResponse code info ->
                                 "[BadResponse]: " ++ (toString code) ++ " - " ++ info
 
-                ( snackbar', snackbarCmds ) =
-                    Snackbar.add (Snackbar.toast () snackbarMessage)
+                ( snackbar, snackbarCmds ) =
+                    Snackbar.add (Snackbar.toast () message)
                         model.snackbar
+
+                ( alert, alertCmds ) =
+                    Alert.init Alert.DangerLevel message
             in
-                ( { model | snackbar = snackbar', isConfigLoaded = Just False }
-                , Cmd.map SnackbarMsg snackbarCmds
+                ( { model | snackbar = snackbar, alert = alert, isConfigLoaded = Just False }
+                , Cmd.batch
+                    [ Cmd.map AlertMsg alertCmds
+                    , Cmd.map SnackbarMsg snackbarCmds
+                    ]
                 )
 
         ConfigFetchSucceed pageUrl config ->
@@ -262,29 +277,29 @@ update msg model =
 
                     Err info ->
                         let
+                            message =
+                                "The config is not loaded. " ++ info
+
                             ( snackbar', snackbarCmds ) =
-                                Snackbar.add (Snackbar.toast () <| "The config is not loaded. " ++ info) model.snackbar
+                                Snackbar.add (Snackbar.toast () message) model.snackbar
+
+                            ( alert, alertCmds ) =
+                                Alert.init Alert.DangerLevel message
                         in
                             ( { model
                                 | snackbar = snackbar'
-                                , config =
-                                    let
-                                        modelConfig =
-                                            model.config
-                                    in
-                                        { modelConfig
-                                            | mode = DevelopmentMode
-                                        }
+                                , alert = alert
                                 , isConfigLoaded = Just False
-                                , debugMessages =
-                                    let
-                                        modelDebugMessages =
-                                            model.debugMessages
-                                    in
-                                        info :: modelDebugMessages
                               }
-                            , Cmd.map SnackbarMsg snackbarCmds
+                            , Cmd.batch [ Cmd.map SnackbarMsg snackbarCmds, Cmd.map AlertMsg alertCmds ]
                             )
+
+        AlertMsg alertMsg ->
+            let
+                ( updatedAlert, alertCmds ) =
+                    Alert.update alertMsg model.alert
+            in
+                ( { model | alert = updatedAlert }, Cmd.map AlertMsg alertCmds )
 
         PageMsg pageMsg ->
             case pageMsg of
@@ -649,62 +664,13 @@ mainView model =
                     Html.App.map PageMsg (Page.view page)
 
                 Nothing ->
-                    text "Failed to load page."
+                    Html.App.map AlertMsg (Alert.view model.alert)
 
         Just False ->
-            div
-                [ style
-                    [ ( "width", "100%" )
-                    , ( "height", "100%" )
-                    , ( "position", "fixed" )
-                    , ( "top", "0" )
-                    , ( "left", "0" )
-                    , ( "display", "flex" )
-                    , ( "align-items", "center" )
-                    , ( "justify-content", "center" )
-                    , ( "overflow", "auto" )
-                    ]
-                ]
-                [ div
-                    [ style
-                        [ ( "background", "lightyellow" )
-                        ]
-                    ]
-                    [ text "The config is not loaded. Restart the application later or contact the developer."
-                    , case model.config.mode of
-                        DevelopmentMode ->
-                            text <| " --> " ++ String.join " --> " model.debugMessages
-
-                        ProductionMode ->
-                            text ""
-
-                        UnknownMode ->
-                            text " --> Unknown mode."
-                    ]
-                ]
+            Html.App.map AlertMsg (Alert.view model.alert)
 
         Nothing ->
-            div
-                [ style
-                    [ ( "width", "100%" )
-                    , ( "height", "100%" )
-                    , ( "position", "fixed" )
-                    , ( "top", "0" )
-                    , ( "left", "0" )
-                    , ( "display", "flex" )
-                    , ( "align-items", "center" )
-                    , ( "justify-content", "center" )
-                    , ( "overflow", "auto" )
-                    ]
-                ]
-                [ div
-                    [ style
-                        [ ( "background", "lightgreen" )
-                        ]
-                    ]
-                    [ text "The application is downloaded. Please wait a bit."
-                    ]
-                ]
+            Html.App.map AlertMsg (Alert.view model.alert)
     , Layout.spacer
     , Footer.mini []
         { left =
