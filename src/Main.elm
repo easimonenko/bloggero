@@ -24,8 +24,7 @@ import Page
 
 main : Program Never
 main =
-    Navigation.program
-        (Navigation.makeParser urlParser)
+    Navigation.program (Navigation.makeParser urlParser)
         { init = init
         , view = view
         , subscriptions = subscriptions
@@ -145,40 +144,25 @@ update msg model =
         Mdl mdlMsg ->
             Material.update mdlMsg model
 
-        ConfigFetchFail (Http.Timeout) ->
+        ConfigFetchFail httpError ->
             let
-                ( snackbar', snackbarCmds ) =
-                    Snackbar.add (Snackbar.toast () "The config is not loaded [Timeout].") model.snackbar
-            in
-                ( { model | snackbar = snackbar', isConfigLoaded = Just False }
-                , Cmd.map SnackbarMsg snackbarCmds
-                )
+                snackbarMessage =
+                    "The config is not loaded "
+                        ++ case httpError of
+                            Http.Timeout ->
+                                "[Timeout]."
 
-        ConfigFetchFail (Http.NetworkError) ->
-            let
-                ( snackbar', snackbarCmds ) =
-                    Snackbar.add (Snackbar.toast () "The config is not loaded [NetworkError].") model.snackbar
-            in
-                ( { model | snackbar = snackbar', isConfigLoaded = Just False }
-                , Cmd.map SnackbarMsg snackbarCmds
-                )
+                            Http.NetworkError ->
+                                "[NetworkError]."
 
-        ConfigFetchFail (Http.UnexpectedPayload info) ->
-            let
-                ( snackbar', snackbarCmds ) =
-                    Snackbar.add
-                        (Snackbar.toast () <| "The config is not loaded [UnexpectedPayload]: " ++ info)
-                        model.snackbar
-            in
-                ( { model | snackbar = snackbar', isConfigLoaded = Just False }
-                , Cmd.map SnackbarMsg snackbarCmds
-                )
+                            Http.UnexpectedPayload info ->
+                                "[UnexpectedPayload]: " ++ info
 
-        ConfigFetchFail (Http.BadResponse code info) ->
-            let
+                            Http.BadResponse code info ->
+                                "[BadResponse]: " ++ (toString code) ++ " - " ++ info
+
                 ( snackbar', snackbarCmds ) =
-                    Snackbar.add
-                        (Snackbar.toast () <| "The config is not loaded [BadResponse]: " ++ (toString code) ++ " - " ++ info)
+                    Snackbar.add (Snackbar.toast () snackbarMessage)
                         model.snackbar
             in
                 ( { model | snackbar = snackbar', isConfigLoaded = Just False }
@@ -307,8 +291,7 @@ update msg model =
                 Page.PageInfoFetchFail pageUrl (Http.BadResponse statusCode statusInfo) ->
                     let
                         ( snackbar', snackbarCmds ) =
-                            Snackbar.add
-                                (Snackbar.toast () <| "Bad response: " ++ (toString statusCode) ++ " - " ++ statusInfo)
+                            Snackbar.add (Snackbar.toast () <| "Bad response: " ++ (toString statusCode) ++ " - " ++ statusInfo)
                                 model.snackbar
                     in
                         ( { model | snackbar = snackbar' }
@@ -321,8 +304,7 @@ update msg model =
                 Page.PageInfoFetchFail pageUrl (Http.Timeout) ->
                     let
                         ( snackbar', snackbarCmds ) =
-                            Snackbar.add
-                                (Snackbar.toast () "Http Timeout.")
+                            Snackbar.add (Snackbar.toast () "Http Timeout.")
                                 model.snackbar
                     in
                         case model.page of
@@ -341,8 +323,7 @@ update msg model =
                             Nothing ->
                                 let
                                     ( snackbar', snackbarCmds ) =
-                                        Snackbar.add
-                                            (Snackbar.toast () "WTF: page is Nothing!")
+                                        Snackbar.add (Snackbar.toast () "WTF: page is Nothing!")
                                             model.snackbar
                                 in
                                     ( { model | snackbar = snackbar' }
@@ -352,8 +333,7 @@ update msg model =
                 Page.PageInfoFetchFail pageUrl (Http.NetworkError) ->
                     let
                         ( snackbar', snackbarCmds ) =
-                            Snackbar.add
-                                (Snackbar.toast () "Network error.")
+                            Snackbar.add (Snackbar.toast () "Network error.")
                                 model.snackbar
                     in
                         case model.page of
@@ -372,8 +352,7 @@ update msg model =
                             Nothing ->
                                 let
                                     ( snackbar', snackbarCmds ) =
-                                        Snackbar.add
-                                            (Snackbar.toast () "WTF: page is Nothing!")
+                                        Snackbar.add (Snackbar.toast () "WTF: page is Nothing!")
                                             model.snackbar
                                 in
                                     ( { model | snackbar = snackbar' }
@@ -383,8 +362,7 @@ update msg model =
                 Page.PageInfoFetchFail pageUrl (Http.UnexpectedPayload info) ->
                     let
                         ( snackbar', snackbarCmds ) =
-                            Snackbar.add
-                                (Snackbar.toast () <| "Unexpected payload: " ++ info)
+                            Snackbar.add (Snackbar.toast () <| "Unexpected payload: " ++ info)
                                 model.snackbar
                     in
                         ( { model | snackbar = snackbar' }
@@ -410,8 +388,7 @@ update msg model =
                         Nothing ->
                             let
                                 ( snackbar', snackbarCmds ) =
-                                    Snackbar.add
-                                        (Snackbar.toast () "WTF: page is Nothing!")
+                                    Snackbar.add (Snackbar.toast () "WTF: page is Nothing!")
                                         model.snackbar
                             in
                                 ( { model | snackbar = snackbar' }
@@ -432,8 +409,7 @@ update msg model =
                         Nothing ->
                             let
                                 ( snackbar', snackbarCmds ) =
-                                    Snackbar.add
-                                        (Snackbar.toast () "WTF: page is Nothing!")
+                                    Snackbar.add (Snackbar.toast () "WTF: page is Nothing!")
                                         model.snackbar
                             in
                                 ( { model | snackbar = snackbar' }
@@ -470,8 +446,7 @@ urlUpdate result model =
         Err info ->
             let
                 ( snackbar', snackbarCmds ) =
-                    Snackbar.add
-                        (Snackbar.toast () <| "Unknown URL: " ++ info)
+                    Snackbar.add (Snackbar.toast () <| "Unknown URL: " ++ info)
                         model.snackbar
             in
                 ( { model | snackbar = snackbar' }
@@ -486,8 +461,7 @@ urlUpdate result model =
             if parsedUrl.path == "" then
                 let
                     ( snackbar', snackbarCmds ) =
-                        Snackbar.add
-                            (Snackbar.toast () <| "Redirect to /home")
+                        Snackbar.add (Snackbar.toast () <| "Redirect to /home")
                             model.snackbar
                 in
                     ( { model | snackbar = snackbar' }
@@ -515,14 +489,14 @@ urlUpdate result model =
                         , sectionId = Maybe.map .id section
                       }
                     , Cmd.batch
-                        [ title <|
-                            model.config.title
-                                ++ case section of
-                                    Just s ->
-                                        " - " ++ s.title
+                        [ title
+                            <| model.config.title
+                            ++ case section of
+                                Just s ->
+                                    " - " ++ s.title
 
-                                    Nothing ->
-                                        ""
+                                Nothing ->
+                                    ""
                         , Cmd.map PageMsg pageFx
                         , if model.mdl.layout.isDrawerOpen then
                             Task.perform identity identity (Task.succeed HideDrawer)
@@ -574,8 +548,8 @@ headerView model =
                     )
                 , Layout.spacer
                 , Layout.navigation []
-                    (map makeLink <|
-                        filter (\item -> member HeaderPlacement item.placement) model.config.sections
+                    (map makeLink
+                        <| filter (\item -> member HeaderPlacement item.placement) model.config.sections
                     )
                 ]
             ]
@@ -660,8 +634,8 @@ drawerView model =
             ]
         , hr [] []
         , Layout.navigation []
-            (map makeLink <|
-                filter (\item -> member DrawerPlacement item.placement) model.config.sections
+            (map makeLink
+                <| filter (\item -> member DrawerPlacement item.placement) model.config.sections
             )
         ]
 
@@ -741,8 +715,8 @@ mainView model =
                 ]
         , right =
             Footer.right []
-                [ Footer.html <|
-                    a
+                [ Footer.html
+                    <| a
                         [ href "https://github.com/easimonenko/bloggero-elm-mdl"
                         , Html.Attributes.property "role" (Json.Encode.string "button")
                         , Html.Attributes.title "GitHub"
