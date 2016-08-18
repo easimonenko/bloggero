@@ -9,14 +9,6 @@ Your blog application from these sources.
 
 ## Build
 
-First, install the Elm:
-
-``` sh
-npm install -g elm
-```
-
-Then:
-
 ``` sh
 npm run build
 ```
@@ -26,7 +18,7 @@ from source.
 
 ## Using
 
-Once setup, you can edit the blog page as plain text files. Supported formats 
+Once setup, you can edit the blog page as plain text files. Supported formats
 are Markdown and HTML.
 
 Each page of the blog is a subdirectory of the blog directory, which should
@@ -37,25 +29,20 @@ contain two files:
 
 This folder can also contain other content, such as images.
 
-For non-static pages should be written the appropriate code for Elm in the 
+For non-static pages should be written the appropriate code for Elm in the
 `src` directory. You can also link to your pages ready Javascript.
 
-To view the blog you first install elm-live:
-
-``` sh
-npm install -g elm-live
-```
-
-And then run a static web server:
+Run a static web server:
 
 ``` sh
 npm start
 ```
 
-Please note that Elm required packages are installed automatically, but You 
+Please note that Elm required packages are installed automatically, but You
 can install them yourself:
 
 ``` sh
+npm install -g elm
 elm package install
 ```
 
@@ -67,21 +54,22 @@ For automated build and reload the application, you can use `elm-live`:
 npm start
 ```
 
-Do not forget to first install elm-live:
+If You plan to develop in the environment such as Atom editor, You need to first
+install Elm globally.
 
 ``` sh
-npm install -g elm-live
+npm install -g elm
 ```
 
 ## Customizing
 
 To configure the blog, edit the `config.json`. Pay special attention to what is
-in the directory `sample` is a blog template. For your blog, copy those files 
+in the directory `sample` is a blog template. For your blog, copy those files
 to a new directory, and then edit the `config.json`.
 
 ## Technologies
 
-The project is written in Elm version 0.17 using the elm-mdl, which implements 
+The project is written in Elm version 0.17 using the elm-mdl, which implements
 on Elm user interface Material Design Lite.
 
 ---
