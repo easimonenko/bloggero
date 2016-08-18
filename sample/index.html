@@ -10,8 +10,14 @@
     <link rel="stylesheet" href="/css/global.css"/>
   </head>
   <body>
+    <div id="info-enable-js" class="alert">
+      <p class="alert-danger">
+        Please enable JavaScript to use the application.
+      </p>
+    </div>
     <script src="/app.js"></script>
     <script>
+      document.getElementById('info-enable-js').style.display = 'none';
       var app = Elm.Main.fullscreen();
       app.ports.title.subscribe(function (title) {
         document.title = title;
