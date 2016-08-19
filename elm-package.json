@@ -9,7 +9,7 @@
     ],
     "exposed-modules": [],
     "dependencies": {
-        "debois/elm-mdl": "7.0.0 <= v < 8.0.0",
+        "debois/elm-mdl": "7.5.0 <= v < 8.0.0",
         "elm-community/basics-extra": "1.1.0 <= v < 2.0.0",
         "elm-community/html-extra": "2.0.0 <= v < 3.0.0",
         "elm-community/list-extra": "3.0.0 <= v < 4.0.0",
