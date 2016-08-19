@@ -1,5 +1,10 @@
 # Bloggero ChangeLog
 
+## 2016-08-19, Version 0.1.3
+
+Static alerts as in Bootstrap for important messages. Also refactoring of code 
+and restructuring of sample blog.
+
 ## 2016-07-12, Version 0.1.2
 
 Small improvements in the main interface, and bug fixes.
