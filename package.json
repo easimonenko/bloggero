@@ -4,8 +4,8 @@
   "description": "Bloggero -- engine for static blogs with single page interface written in Elm with Material Design Light.",
   "main": "app.js",
   "scripts": {
-    "build": "elm make src/Main.elm --output=sample/app.js",
-    "start": "elm-live src/Main.elm --output=sample/app.js --dir=sample --open",
+    "build": "elm make src/Main.elm",
+    "start": "elm-live src/Main.elm",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

@@ -4,19 +4,25 @@ with Material Design Light.
 
 ## First
 
-I recommend that you first fork this repository in order to be able to update
-Your blog application from these sources.
+I recommend that you first fork or clone this repository in order to be able to
+update Your blog application from these sources.
 
 ## Build
 
 ``` sh
-npm run build
+npm run build -- --output=the_path_to_your_blog/app.js
 ```
 
 So will downloaded the required packages are Elm and builded the application
 from source.
 
-## Using
+If You want to build for sample a blog, run:
+
+``` sh
+npm run build -- --output=sample/app.js
+```
+
+## Usage
 
 Once setup, you can edit the blog page as plain text files. Supported formats
 are Markdown and HTML.
@@ -35,8 +41,17 @@ For non-static pages should be written the appropriate code for Elm in the
 Run a static web server:
 
 ``` sh
-npm start
+npm start -- --output=the_path_to_your_blog/app.js --dir=the_path_to_your_blog
 ```
+
+If You want to see for sample a blog, run:
+
+``` sh
+npm start -- --output=sample/app.js --dir=sample
+```
+
+If You want to Your blog automatically shows up in the browser, add the option
+`--open`.
 
 Please note that Elm required packages are installed automatically, but You
 can install them yourself:
@@ -51,7 +66,7 @@ elm package install
 For automated build and reload the application, you can use `elm-live`:
 
 ``` sh
-npm start
+npm start -- --output=the_path_to_your_blog/app.js --dir=the_path_to_your_blog
 ```
 
 If You plan to develop in the environment such as Atom editor, You need to first
