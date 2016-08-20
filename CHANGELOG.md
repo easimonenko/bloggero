@@ -1,5 +1,10 @@
 # Bloggero ChangeLog
 
+## 2016-08-20, Version 0.1.4
+
+* For debug messages now instead of Snackbar uses its own component AlertList.
+* Upgrade to package elm-mdl version 7.5.0.
+
 ## 2016-08-19, Version 0.1.3
 
 Static alerts as in Bootstrap for important messages. Also refactoring of code 
