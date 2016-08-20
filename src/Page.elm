@@ -4,17 +4,16 @@ import Html exposing (..)
 import Html.Attributes exposing (class, style)
 import Http
 import Json.Decode exposing (..)
-import Json.Encode
 import Markdown
 import Task
 import VirtualDom
 import Material
 import Material.Button as Button
 import Material.Color as Color
-import Material.Elevation as Elevation
-import Material.Grid as Grid exposing (Device(..))
 import Material.Options as Options
-import Blog.PostPage
+
+
+--import Blog.PostPage
 
 
 type alias Model =
@@ -49,8 +48,7 @@ init path query root =
       , contentFile = ""
       , content = text ""
       }
-    , Task.perform
-        (PageInfoFetchFail { path = path, query = query })
+    , Task.perform (PageInfoFetchFail { path = path, query = query })
         PageInfoFetchSucceed
         (Http.getString <| root ++ path ++ "/index.json")
     )
@@ -81,8 +79,7 @@ update msg model =
                             ( "markdown", "index.markdown" )
             in
                 ( { model | title = pageTitle, contentType = contentType, contentFile = contentFile }
-                , Task.perform
-                    PageContentFetchFail
+                , Task.perform PageContentFetchFail
                     PageContentFetchSucceed
                     (Http.getString <| model.root ++ model.path ++ "/" ++ contentFile)
                 )
@@ -161,8 +158,7 @@ update msg model =
 
         ButtonPageInfoRefresh pageUrl ->
             ( model
-            , Task.perform
-                (PageInfoFetchFail pageUrl)
+            , Task.perform (PageInfoFetchFail pageUrl)
                 PageInfoFetchSucceed
                 (Http.getString <| model.root ++ pageUrl.path ++ "/index.json")
             )
@@ -175,8 +171,4 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    Grid.grid []
-        [ Grid.cell [ Grid.size All 8, Grid.offset Desktop 2, Elevation.e3 ]
-            [ model.content
-            ]
-        ]
+    model.content

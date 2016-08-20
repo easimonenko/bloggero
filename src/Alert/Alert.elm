@@ -1,12 +1,16 @@
-module Alert exposing (Model, Msg(..), Level(..), init, update, view)
+module Alert.Alert exposing (Model, Msg(..), Level(..), init, update, view)
 
 import Html exposing (..)
-import Html.Attributes exposing (class, style)
 import Material
+import Material.Button as Button
+import Material.Icon as Icon
+import Material.List as MdlList
+import Material.Options as MdlOptions
 
 
 type alias Model =
     { mdl : Material.Model
+    , id : Int
     , level : Level
     , message : String
     }
@@ -21,11 +25,13 @@ type Level
 
 type Msg
     = Mdl (Material.Msg Msg)
+    | AlertClose Int
 
 
-init : Level -> String -> ( Model, Cmd Msg )
-init level message =
+init : Level -> Int -> String -> ( Model, Cmd Msg )
+init level id message =
     ( { mdl = Material.model
+      , id = id
       , level = level
       , message = message
       }
@@ -57,12 +63,13 @@ view model =
                 DangerLevel ->
                     "danger"
     in
-        div
-            [ class "alert"
-            ]
-            [ p
-                [ class <| "alert-" ++ (alertLevel model.level)
-                ]
-                [ text model.message
+        MdlList.li [ MdlOptions.cs <| "alert-" ++ (alertLevel model.level) ]
+            [ MdlList.content [] [ text model.message ]
+            , MdlList.content2 []
+                [ Button.render Mdl
+                    [ 0 ]
+                    model.mdl
+                    [ Button.icon, Button.onClick (AlertClose model.id) ]
+                    [ Icon.i "close" ]
                 ]
             ]

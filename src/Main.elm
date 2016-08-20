@@ -14,12 +14,15 @@ import Task
 import List.Extra exposing (find)
 import Material
 import Material.Button as Button
+import Material.Elevation as Elevation
+import Material.Grid as Grid exposing (Device(..))
 import Material.Footer as Footer
 import Material.Icon as Icon
 import Material.Layout as Layout
 import Material.Snackbar as Snackbar
 import Navigation
-import Alert
+import Alert.AlertList as AlertList
+import Alert.Alert as Alert
 import Page
 
 
@@ -36,7 +39,7 @@ main =
 
 type alias Model =
     { mdl : Material.Model
-    , alert : Alert.Model
+    , alertList : AlertList.Model
     , page : Maybe Page.Model
     , snackbar : Snackbar.Model ()
     , config :
@@ -46,7 +49,6 @@ type alias Model =
         , sections : List SectionItem
         }
     , isConfigLoaded : Maybe Bool
-    , debugMessages : List String
     , sectionId : Maybe String
     }
 
@@ -79,7 +81,7 @@ type Msg
     | ConfigFetchSucceed { path : String, query : String } String
     | ConfigFetchFail Http.Error
     | SnackbarMsg (Snackbar.Msg ())
-    | AlertMsg Alert.Msg
+    | AlertListMsg AlertList.Msg
     | PageMsg Page.Msg
     | HideDrawer
 
@@ -90,13 +92,13 @@ port title : String -> Cmd msg
 init : Result String { path : String, query : String } -> ( Model, Cmd Msg )
 init result =
     let
-        ( alert, alertCmds ) =
-            Alert.init Alert.InfoLevel "The application is downloaded. Please wait a bit."
+        ( alertList, alertListCmds ) =
+            AlertList.init
 
         model =
             { mdl = Material.model
             , snackbar = Snackbar.model
-            , alert = alert
+            , alertList = alertList
             , page = Nothing
             , config =
                 { title = ""
@@ -105,7 +107,6 @@ init result =
                 , sections = []
                 }
             , isConfigLoaded = Nothing
-            , debugMessages = []
             , sectionId = Nothing
             }
 
@@ -115,14 +116,13 @@ init result =
         case result of
             Err info ->
                 let
-                    ( snackbar', snackbarCmds ) =
-                        Snackbar.add (Snackbar.toast () <| "Parsing URL: " ++ info) model.snackbar
+                    ( alertList, alertListCmds ) =
+                        AlertList.add model.alertList Alert.InfoLevel ("Parsing URL: " ++ info)
                 in
-                    ( { model | snackbar = snackbar' }
+                    ( { model | alertList = alertList }
                     , Cmd.batch
                         [ Layout.sub0 Mdl
-                        , Cmd.map SnackbarMsg snackbarCmds
-                        , Cmd.map AlertMsg alertCmds
+                        , Cmd.map AlertListMsg alertListCmds
                         , loadConfig { path = "/error/unknown-url", query = "" }
                         ]
                     )
@@ -130,20 +130,19 @@ init result =
             Ok pageUrl ->
                 if pageUrl.path == "" then
                     let
-                        ( snackbar', snackbarCmds ) =
-                            Snackbar.add (Snackbar.toast () <| "Redirect to /home.") model.snackbar
+                        ( alertList, alertListCmds ) =
+                            AlertList.add model.alertList Alert.InfoLevel "Redirect to /home."
                     in
-                        ( { model | snackbar = snackbar' }
+                        ( { model | alertList = alertList }
                         , Cmd.batch
                             [ Layout.sub0 Mdl
-                            , Cmd.map SnackbarMsg snackbarCmds
-                            , Cmd.map AlertMsg alertCmds
+                            , Cmd.map AlertListMsg alertListCmds
                             , loadConfig { path = "/home", query = pageUrl.query }
                             ]
                         )
                 else
                     ( model
-                    , Cmd.batch [ Layout.sub0 Mdl, loadConfig pageUrl, Cmd.map AlertMsg alertCmds ]
+                    , Cmd.batch [ Layout.sub0 Mdl, loadConfig pageUrl, Cmd.map AlertListMsg alertListCmds ]
                     )
 
 
@@ -170,17 +169,12 @@ update msg model =
                             Http.BadResponse code info ->
                                 "[BadResponse]: " ++ (toString code) ++ " - " ++ info
 
-                ( snackbar, snackbarCmds ) =
-                    Snackbar.add (Snackbar.toast () message)
-                        model.snackbar
-
-                ( alert, alertCmds ) =
-                    Alert.init Alert.DangerLevel message
+                ( alertList, alertListCmds ) =
+                    AlertList.add model.alertList Alert.DangerLevel message
             in
-                ( { model | snackbar = snackbar, alert = alert, isConfigLoaded = Just False }
+                ( { model | alertList = alertList, isConfigLoaded = Just False }
                 , Cmd.batch
-                    [ Cmd.map AlertMsg alertCmds
-                    , Cmd.map SnackbarMsg snackbarCmds
+                    [ Cmd.map AlertListMsg alertListCmds
                     ]
                 )
 
@@ -250,11 +244,11 @@ update msg model =
                 case Result.map4 (,,,) blogTitle blogRoot blogMode blogSections of
                     Ok ( title', root', mode', sections' ) ->
                         let
-                            ( snackbar', snackbarCmds ) =
-                                Snackbar.add (Snackbar.toast () "The config is loaded.") model.snackbar
+                            ( alertList, alertListCmds ) =
+                                AlertList.add model.alertList Alert.SuccessLevel "The config is loaded."
                         in
                             ( { model
-                                | snackbar = snackbar'
+                                | alertList = alertList
                                 , config =
                                     let
                                         modelConfig =
@@ -271,7 +265,7 @@ update msg model =
                             , Cmd.batch
                                 [ title title'
                                 , Navigation.modifyUrl <| "/#!" ++ pageUrl.path
-                                , Cmd.map SnackbarMsg snackbarCmds
+                                , Cmd.map AlertListMsg alertListCmds
                                 ]
                             )
 
@@ -280,76 +274,43 @@ update msg model =
                             message =
                                 "The config is not loaded. " ++ info
 
-                            ( snackbar', snackbarCmds ) =
-                                Snackbar.add (Snackbar.toast () message) model.snackbar
-
-                            ( alert, alertCmds ) =
-                                Alert.init Alert.DangerLevel message
+                            ( alertList, alertListCmds ) =
+                                AlertList.add model.alertList Alert.DangerLevel message
                         in
                             ( { model
-                                | snackbar = snackbar'
-                                , alert = alert
+                                | alertList = alertList
                                 , isConfigLoaded = Just False
                               }
-                            , Cmd.batch [ Cmd.map SnackbarMsg snackbarCmds, Cmd.map AlertMsg alertCmds ]
+                            , Cmd.map AlertListMsg alertListCmds
                             )
 
-        AlertMsg alertMsg ->
+        AlertListMsg alertListMsg ->
             let
-                ( updatedAlert, alertCmds ) =
-                    Alert.update alertMsg model.alert
+                ( updatedAlertList, alertListCmds ) =
+                    AlertList.update alertListMsg model.alertList
             in
-                ( { model | alert = updatedAlert }, Cmd.map AlertMsg alertCmds )
+                ( { model | alertList = updatedAlertList }, Cmd.map AlertListMsg alertListCmds )
 
         PageMsg pageMsg ->
             case pageMsg of
-                Page.PageInfoFetchFail pageUrl (Http.BadResponse statusCode statusInfo) ->
+                Page.PageInfoFetchFail pageUrl httpError ->
                     let
-                        ( snackbar', snackbarCmds ) =
-                            Snackbar.add (Snackbar.toast () <| "Bad response: " ++ (toString statusCode) ++ " - " ++ statusInfo)
-                                model.snackbar
-                    in
-                        ( { model | snackbar = snackbar' }
-                        , Cmd.batch
-                            [ Cmd.map SnackbarMsg snackbarCmds
-                            , Navigation.modifyUrl <| "/#!/error/bad-response/" ++ toString statusCode
-                            ]
-                        )
+                        message =
+                            case httpError of
+                                Http.BadResponse statusCode statusInfo ->
+                                    "Bad response: " ++ (toString statusCode) ++ " - " ++ statusInfo
 
-                Page.PageInfoFetchFail pageUrl (Http.Timeout) ->
-                    let
-                        ( snackbar', snackbarCmds ) =
-                            Snackbar.add (Snackbar.toast () "Http Timeout.")
-                                model.snackbar
-                    in
-                        case model.page of
-                            Just page ->
-                                let
-                                    ( updatedPage, pageCmds ) =
-                                        Page.update pageMsg page
-                                in
-                                    ( { model | page = Just updatedPage, snackbar = snackbar' }
-                                    , Cmd.batch
-                                        [ Cmd.map SnackbarMsg snackbarCmds
-                                        , Cmd.map PageMsg pageCmds
-                                        ]
-                                    )
+                                Http.Timeout ->
+                                    "Http Timeout."
 
-                            Nothing ->
-                                let
-                                    ( snackbar', snackbarCmds ) =
-                                        Snackbar.add (Snackbar.toast () "WTF: page is Nothing!")
-                                            model.snackbar
-                                in
-                                    ( { model | snackbar = snackbar' }
-                                    , Cmd.map SnackbarMsg snackbarCmds
-                                    )
+                                Http.NetworkError ->
+                                    "Network error."
 
-                Page.PageInfoFetchFail pageUrl (Http.NetworkError) ->
-                    let
-                        ( snackbar', snackbarCmds ) =
-                            Snackbar.add (Snackbar.toast () "Network error.")
-                                model.snackbar
+                                Http.UnexpectedPayload info ->
+                                    "Unexpected payload: " ++ info
+
+                        ( alertList, alertListCmds ) =
+                            AlertList.add model.alertList Alert.DangerLevel message
                     in
                         case model.page of
                             Just page ->
@@ -357,35 +318,24 @@ update msg model =
                                     ( updatedPage, pageCmds ) =
                                         Page.update pageMsg page
                                 in
-                                    ( { model | page = Just updatedPage, snackbar = snackbar' }
+                                    ( { model | page = Just updatedPage, alertList = alertList }
                                     , Cmd.batch
-                                        [ Cmd.map SnackbarMsg snackbarCmds
+                                        [ Cmd.map AlertListMsg alertListCmds
                                         , Cmd.map PageMsg pageCmds
                                         ]
                                     )
 
                             Nothing ->
                                 let
-                                    ( snackbar', snackbarCmds ) =
-                                        Snackbar.add (Snackbar.toast () "WTF: page is Nothing!")
-                                            model.snackbar
+                                    ( alertList2, alertListCmds2 ) =
+                                        AlertList.add alertList Alert.DangerLevel "WTF: page is Nothing!"
                                 in
-                                    ( { model | snackbar = snackbar' }
-                                    , Cmd.map SnackbarMsg snackbarCmds
+                                    ( { model | alertList = alertList2 }
+                                    , Cmd.batch
+                                        [ Cmd.map AlertListMsg alertListCmds
+                                        , Cmd.map AlertListMsg alertListCmds2
+                                        ]
                                     )
-
-                Page.PageInfoFetchFail pageUrl (Http.UnexpectedPayload info) ->
-                    let
-                        ( snackbar', snackbarCmds ) =
-                            Snackbar.add (Snackbar.toast () <| "Unexpected payload: " ++ info)
-                                model.snackbar
-                    in
-                        ( { model | snackbar = snackbar' }
-                        , Cmd.batch
-                            [ Cmd.map SnackbarMsg snackbarCmds
-                            , Navigation.modifyUrl <| "/#!/error/unexpected-payload"
-                            ]
-                        )
 
                 Page.PageInfoFetchSucceed _ ->
                     case model.page of
@@ -402,12 +352,11 @@ update msg model =
 
                         Nothing ->
                             let
-                                ( snackbar', snackbarCmds ) =
-                                    Snackbar.add (Snackbar.toast () "WTF: page is Nothing!")
-                                        model.snackbar
+                                ( alertList, alertListCmds ) =
+                                    AlertList.add model.alertList Alert.DangerLevel "WTF: page is Nothing!"
                             in
-                                ( { model | snackbar = snackbar' }
-                                , Cmd.map SnackbarMsg snackbarCmds
+                                ( { model | alertList = alertList }
+                                , Cmd.map AlertListMsg alertListCmds
                                 )
 
                 _ ->
@@ -423,12 +372,11 @@ update msg model =
 
                         Nothing ->
                             let
-                                ( snackbar', snackbarCmds ) =
-                                    Snackbar.add (Snackbar.toast () "WTF: page is Nothing!")
-                                        model.snackbar
+                                ( alertList, alertListCmds ) =
+                                    AlertList.add model.alertList Alert.DangerLevel "WTF: page is Nothing!"
                             in
-                                ( { model | snackbar = snackbar' }
-                                , Cmd.map SnackbarMsg snackbarCmds
+                                ( { model | alertList = alertList }
+                                , Cmd.map AlertListMsg alertListCmds
                                 )
 
         SnackbarMsg snackbarMsg ->
@@ -460,28 +408,25 @@ urlUpdate result model =
     case result of
         Err info ->
             let
-                ( snackbar', snackbarCmds ) =
-                    Snackbar.add (Snackbar.toast () <| "Unknown URL: " ++ info)
-                        model.snackbar
+                ( alertList, alertListCmds ) =
+                    AlertList.add model.alertList Alert.WarningLevel <| "Unknown URL: " ++ info
             in
-                ( { model | snackbar = snackbar' }
+                ( { model | alertList = alertList }
                 , Cmd.batch
                     [ title <| model.config.title ++ " - Unknown URL"
-                    , Cmd.map SnackbarMsg snackbarCmds
-                    , Navigation.modifyUrl "/#!/error/unknown-url"
+                    , Cmd.map AlertListMsg alertListCmds
                     ]
                 )
 
         Ok parsedUrl ->
             if parsedUrl.path == "" then
                 let
-                    ( snackbar', snackbarCmds ) =
-                        Snackbar.add (Snackbar.toast () <| "Redirect to /home")
-                            model.snackbar
+                    ( alertList, alertListCmds ) =
+                        AlertList.add model.alertList Alert.WarningLevel "Redirect to /home"
                 in
-                    ( { model | snackbar = snackbar' }
+                    ( { model | alertList = alertList }
                     , Cmd.batch
-                        [ Cmd.map SnackbarMsg snackbarCmds
+                        [ Cmd.map AlertListMsg alertListCmds
                         , Navigation.modifyUrl "/#!/home"
                         ]
                     )
@@ -495,7 +440,8 @@ urlUpdate result model =
                             (\item ->
                                 item.route
                                     == "/"
-                                    ++ withDefault "" (head <| withDefault [] (tail (split "/" parsedUrl.path)))
+                                    ++ withDefault ""
+                                        (head <| withDefault [] (tail (split "/" parsedUrl.path)))
                             )
                             model.config.sections
                 in
@@ -657,20 +603,32 @@ drawerView model =
 
 mainView : Model -> List (Html Msg)
 mainView model =
-    [ case model.isConfigLoaded of
-        Just True ->
-            case model.page of
-                Just page ->
-                    Html.App.map PageMsg (Page.view page)
+    [ Grid.grid []
+        [ Grid.cell [ Grid.size All 8, Grid.offset Desktop 2, Elevation.e3 ]
+            [ case model.isConfigLoaded of
+                Just True ->
+                    case model.page of
+                        Just page ->
+                            Html.App.map PageMsg (Page.view page)
+
+                        Nothing ->
+                            text ""
+
+                Just False ->
+                    text ""
 
                 Nothing ->
-                    Html.App.map AlertMsg (Alert.view model.alert)
+                    text ""
+            ]
+        , Grid.cell [ Grid.size All 2 ]
+            (case model.config.mode of
+                DevelopmentMode ->
+                    [ Html.App.map AlertListMsg (AlertList.view model.alertList) ]
 
-        Just False ->
-            Html.App.map AlertMsg (Alert.view model.alert)
-
-        Nothing ->
-            Html.App.map AlertMsg (Alert.view model.alert)
+                _ ->
+                    []
+            )
+        ]
     , Layout.spacer
     , Footer.mini []
         { left =
