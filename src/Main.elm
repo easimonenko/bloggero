@@ -8,10 +8,11 @@ import Http
 import Json.Decode exposing ((:=), decodeString, list, maybe, object5, string)
 import Json.Encode
 import List exposing (filter, head, map, member, tail)
+import List.Extra exposing (find)
 import Maybe exposing (withDefault)
+import Navigation
 import String exposing (split)
 import Task
-import List.Extra exposing (find)
 import Material
 import Material.Button as Button
 import Material.Elevation as Elevation
@@ -20,7 +21,6 @@ import Material.Footer as Footer
 import Material.Icon as Icon
 import Material.Layout as Layout
 import Material.Snackbar as Snackbar
-import Navigation
 import Alert.AlertList as AlertList
 import Alert.Alert as Alert
 import Page
@@ -44,7 +44,6 @@ type alias Model =
     , snackbar : Snackbar.Model ()
     , config :
         { title : String
-        , root : String
         , mode : Mode
         , sections : List SectionItem
         }
@@ -102,7 +101,6 @@ init result =
             , page = Nothing
             , config =
                 { title = ""
-                , root = ""
                 , mode = DevelopmentMode
                 , sections = []
                 }
@@ -183,9 +181,6 @@ update msg model =
                 blogTitle =
                     decodeString ("title" := string) config
 
-                blogRoot =
-                    decodeString ("root" := string) config
-
                 blogMode =
                     decodeString
                         ("mode"
@@ -241,8 +236,8 @@ update msg model =
                 blogSections =
                     decodeString ("sections" := sectionItemListDecoder) config
             in
-                case Result.map4 (,,,) blogTitle blogRoot blogMode blogSections of
-                    Ok ( title', root', mode', sections' ) ->
+                case Result.map3 (,,) blogTitle blogMode blogSections of
+                    Ok ( title', mode', sections' ) ->
                         let
                             ( alertList, alertListCmds ) =
                                 AlertList.add model.alertList Alert.SuccessLevel "The config is loaded."
@@ -256,7 +251,6 @@ update msg model =
                                     in
                                         { modelConfig
                                             | title = title'
-                                            , root = root'
                                             , mode = mode'
                                             , sections = sections'
                                         }
@@ -433,7 +427,7 @@ urlUpdate result model =
             else
                 let
                     ( page, pageFx ) =
-                        Page.init parsedUrl.path parsedUrl.query model.config.root
+                        Page.init parsedUrl.path parsedUrl.query
 
                     section =
                         find

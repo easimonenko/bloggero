@@ -20,7 +20,6 @@ type alias Model =
     { mdl : Material.Model
     , path : String
     , query : String
-    , root : String
     , title : String
     , contentType : String
     , contentFile : String
@@ -37,12 +36,11 @@ type Msg
     | ButtonPageInfoRefresh { path : String, query : String }
 
 
-init : String -> String -> String -> ( Model, Cmd Msg )
-init path query root =
+init : String -> String -> ( Model, Cmd Msg )
+init path query =
     ( { mdl = Material.model
       , path = path
       , query = query
-      , root = root
       , title = ""
       , contentType = ""
       , contentFile = ""
@@ -50,7 +48,7 @@ init path query root =
       }
     , Task.perform (PageInfoFetchFail { path = path, query = query })
         PageInfoFetchSucceed
-        (Http.getString <| root ++ path ++ "/index.json")
+        (Http.getString <| path ++ "/index.json")
     )
 
 
@@ -81,7 +79,7 @@ update msg model =
                 ( { model | title = pageTitle, contentType = contentType, contentFile = contentFile }
                 , Task.perform PageContentFetchFail
                     PageContentFetchSucceed
-                    (Http.getString <| model.root ++ model.path ++ "/" ++ contentFile)
+                    (Http.getString <| model.path ++ "/" ++ contentFile)
                 )
 
         PageInfoFetchFail pageUrl (Http.NetworkError) ->
@@ -160,7 +158,7 @@ update msg model =
             ( model
             , Task.perform (PageInfoFetchFail pageUrl)
                 PageInfoFetchSucceed
-                (Http.getString <| model.root ++ pageUrl.path ++ "/index.json")
+                (Http.getString <| pageUrl.path ++ "/index.json")
             )
 
         _ ->
