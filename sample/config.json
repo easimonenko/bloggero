@@ -27,5 +27,11 @@
         "header", "drawer", "footer", "sitemap"
       ]
     }
+  ],
+  "modules": [
+    {
+      "name": "blog",
+      "root": "/blog"
+    }
   ]
 }

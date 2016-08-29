@@ -5,6 +5,7 @@ import Html.App
 import Material
 import Material.List as MdlList
 import Alert.Alert as Alert
+import Alert.AlertLevel as AlertLevel
 
 
 type alias Model =
@@ -29,7 +30,7 @@ init =
     )
 
 
-add : Model -> Alert.Level -> String -> ( Model, Cmd Msg )
+add : Model -> AlertLevel.Level -> String -> ( Model, Cmd Msg )
 add model level message =
     let
         ( alert, alertCmds ) =
@@ -53,7 +54,9 @@ update msg model =
         AlertMsg alertMsg ->
             case alertMsg of
                 Alert.AlertClose alertId ->
-                    ( { model | alerts = List.filter (\alert -> alert.id /= alertId) model.alerts }, Cmd.none )
+                    ( { model | alerts = List.filter (\alert -> alert.id /= alertId) model.alerts }
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( model, Cmd.none )
