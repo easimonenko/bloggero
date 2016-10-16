@@ -1,19 +1,32 @@
 # bloggero-elm-mdl
-Bloggero -- engine for static blogs with single page interface written in Elm
+Bloggero -- engine for static blogs with a single page interface written in Elm
 with Material Design Light.
+
+## Download and start with Elm
+
+[Guide and download link for Elm](https://guide.elm-lang.org/get_started.html)
+
+If You plan to develop in an environment such as the Atom editor, you should
+install Elm globally.
+
+``` sh
+npm install -g elm
+```
 
 ## First
 
 I recommend that you first fork this repository in order to be able to update
-Your blog application from these sources.
+your blog application from these sources.
 
 ## Build
+
+Go into the downloaded directory then: 
 
 ``` sh
 npm run build
 ```
 
-So will downloaded the required packages are Elm and builded the application
+This will download the required packages for Elm and build the application
 from source.
 
 ## Using
@@ -25,12 +38,12 @@ Each page of the blog is a subdirectory of the blog directory, which should
 contain two files:
 
 * `index.json` -- page description
-* `index.markdown` или `index.html` -- page content
+* `index.markdown` or `index.html` -- page content
 
 This folder can also contain other content, such as images.
 
-For non-static pages should be written the appropriate code for Elm in the
-`src` directory. You can also link to your pages ready Javascript.
+For non-static pages write the appropriate code for Elm in the
+`src` directory. You can also link to Javascript.
 
 Run a static web server:
 
@@ -38,7 +51,7 @@ Run a static web server:
 npm start
 ```
 
-Please note that Elm required packages are installed automatically, but You
+Please note that the packages required by Elm are installed automatically, but you
 can install them yourself:
 
 ``` sh
@@ -48,24 +61,18 @@ elm package install
 
 ## Development
 
-For automated build and reload the application, you can use `elm-live`:
+For automated building and reloading of the application, you can use [elm-live](https://github.com/tomekwi/elm-live):
 
 ``` sh
 npm start
 ```
 
-If You plan to develop in the environment such as Atom editor, You need to first
-install Elm globally.
-
-``` sh
-npm install -g elm
-```
-
 ## Customizing
 
-To configure the blog, edit the `config.json`. Pay special attention to what is
-in the directory `sample` is a blog template. For your blog, copy those files
-to a new directory, and then edit the `config.json`.
+To configure the blog/website, edit the `package.json`. Pay special attention to what is
+in the directory `sample` is a example template. For your blog, copy those files
+to a new directory, and then edit the `package.json` to point to your new
+directory..
 
 ## Technologies
 
