@@ -1,5 +1,9 @@
 # Bloggero ChangeLog
 
+## 2016-11-25, Version 0.2.0
+
+* Port to Elm 0.18.
+
 ## 2016-08-20, Version 0.1.4
 
 * For debug messages now instead of Snackbar uses its own component AlertList.

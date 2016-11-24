@@ -2,12 +2,13 @@ module Page exposing (Model, Msg(..), OutMsg(..), init, update, view)
 
 import Debug
 import Html exposing (..)
-import Html.App
 import Html.Attributes exposing (class, style)
 import Http
 import Json.Decode exposing (..)
 import Markdown
+import Navigation
 import Task
+import Tuple exposing (..)
 import VirtualDom
 
 
@@ -32,8 +33,7 @@ import Page.InPlaceAlertPage as InPlaceAlertPage
 
 type alias Model =
     { mdl : Material.Model
-    , path : String
-    , query : String
+    , location : Navigation.Location
     , title : String
     , contentType : String
     , contentFile : String
@@ -51,10 +51,10 @@ type Driver
 type Msg
     = Mdl (Material.Msg Msg)
     | PageInfoFetchSucceed String
-    | PageInfoFetchFail { path : String, query : String } Http.Error
+    | PageInfoFetchFail Navigation.Location Http.Error
     | PageContentFetchSucceed String
     | PageContentFetchFail Http.Error
-    | ButtonPageInfoRefresh { path : String, query : String }
+    | ButtonPageInfoRefresh Navigation.Location
     | HomePageMsg HomePage.Msg
     | EmptyPlacePageMsg EmptyPlacePage.Msg
     | InPlaceAlertPageMsg InPlaceAlertPage.Msg
@@ -65,15 +65,19 @@ type OutMsg
     | AlertOutMsg AlertLevel.Level String
 
 
-init : String -> String -> ( Model, Cmd Msg, OutMsg )
-init path query =
+pagePath : Navigation.Location -> String
+pagePath location =
+    String.dropLeft 2 location.hash
+
+
+init : Navigation.Location -> ( Model, Cmd Msg, OutMsg )
+init location =
     let
         ( emptyPlacePage, emptyPlacePageCmds ) =
             EmptyPlacePage.init
     in
         ( { mdl = Material.model
-          , path = path
-          , query = query
+          , location = location
           , title = ""
           , contentType = ""
           , contentFile = ""
@@ -81,9 +85,16 @@ init path query =
           , pageDriverModel = EmptyPlacePage emptyPlacePage
           }
         , Cmd.batch
-            [ Task.perform (PageInfoFetchFail { path = path, query = query })
-                PageInfoFetchSucceed
-                (Http.getString <| path ++ "/index.json")
+            [ Task.attempt
+                (\result ->
+                    case result of
+                        Err msg ->
+                            PageInfoFetchFail location msg
+
+                        Ok msg ->
+                            PageInfoFetchSucceed msg
+                )
+                (Http.toTask <| Http.getString <| (pagePath location) ++ "/index.json")
             , Cmd.map EmptyPlacePageMsg emptyPlacePageCmds
             ]
         , NoneOutMsg
@@ -92,7 +103,7 @@ init path query =
 
 tuple2triple : ( a, b ) -> c -> ( a, b, c )
 tuple2triple t v =
-    ( fst t, snd t, v )
+    ( first t, second t, v )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, OutMsg )
@@ -103,14 +114,14 @@ update msg model =
 
         PageInfoFetchSucceed pageInfo ->
             let
-                ( model, cmds, outMsg ) =
-                    case decodeString ("title" := string) pageInfo of
+                ( modelUpdated, cmds, outMsg ) =
+                    case decodeString (field "title" string) pageInfo of
                         Ok pageTitle ->
                             let
                                 contentDecoder =
-                                    object2 (,) (maybe ("type" := string)) (maybe ("file" := string))
+                                    map2 (,) (maybe (field "type" string)) (maybe (field "file" string))
                             in
-                                case (decodeString <| "content" := contentDecoder) pageInfo of
+                                case (decodeString <| field "content" contentDecoder) pageInfo of
                                     Ok ( ct, cf ) ->
                                         let
                                             contentType =
@@ -121,7 +132,7 @@ update msg model =
                                             contentFile =
                                                 Maybe.withDefault "index.markdown" cf
 
-                                            model =
+                                            modelNext =
                                                 { model
                                                     | title = pageTitle
                                                     , contentType = contentType
@@ -130,20 +141,34 @@ update msg model =
                                         in
                                             case contentType of
                                                 "markdown" ->
-                                                    ( model
-                                                    , Task.perform PageContentFetchFail
-                                                        PageContentFetchSucceed
-                                                        (Http.getString <| model.path ++ "/" ++ contentFile)
+                                                    ( modelNext
+                                                    , Task.attempt
+                                                        (\result ->
+                                                            case result of
+                                                                Err msg ->
+                                                                    PageContentFetchFail msg
+
+                                                                Ok msg ->
+                                                                    PageContentFetchSucceed msg
+                                                        )
+                                                        (Http.toTask <| Http.getString <| model.location.hash ++ "/" ++ contentFile)
                                                     , AlertOutMsg
                                                         AlertLevel.InfoLevel
                                                         "PageInfoFetchSucceed: contentType = markdown"
                                                     )
 
                                                 "html" ->
-                                                    ( model
-                                                    , Task.perform PageContentFetchFail
-                                                        PageContentFetchSucceed
-                                                        (Http.getString <| model.path ++ "/" ++ contentFile)
+                                                    ( modelNext
+                                                    , Task.attempt
+                                                        (\result ->
+                                                            case result of
+                                                                Err msg ->
+                                                                    PageContentFetchFail msg
+
+                                                                Ok msg ->
+                                                                    PageContentFetchSucceed msg
+                                                        )
+                                                        (Http.toTask <| Http.getString <| model.location.hash ++ "/" ++ contentFile)
                                                     , AlertOutMsg
                                                         AlertLevel.InfoLevel
                                                         "PageInfoFetchSucceed: contentType = html"
@@ -154,7 +179,7 @@ update msg model =
                                                         ( homePage, homePageCmds, homePageOutMsg ) =
                                                             HomePage.init { root = "/home", blogRoot = "/blog" }
                                                     in
-                                                        ( { model | pageDriverModel = HomePage homePage }
+                                                        ( { modelNext | pageDriverModel = HomePage homePage }
                                                         , Cmd.map HomePageMsg homePageCmds
                                                         , AlertOutMsg
                                                             AlertLevel.InfoLevel
@@ -168,7 +193,7 @@ update msg model =
                                                                 AlertLevel.WarningLevel
                                                                 ("Unknown type of page: " ++ unknownType)
                                                     in
-                                                        ( { model | pageDriverModel = InPlaceAlertPage inPlaceAlertPage }
+                                                        ( { modelNext | pageDriverModel = InPlaceAlertPage inPlaceAlertPage }
                                                         , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
                                                         , AlertOutMsg
                                                             AlertLevel.WarningLevel
@@ -199,9 +224,9 @@ update msg model =
                                     ("Page info fetch succeed, but parsed fail: " ++ info)
                                 )
             in
-                ( model, cmds, outMsg )
+                ( modelUpdated, cmds, outMsg )
 
-        PageInfoFetchFail pageUrl (Http.NetworkError) ->
+        PageInfoFetchFail location (Http.NetworkError) ->
             ( { model
                 | title = "Network Error"
                 , content =
@@ -222,7 +247,7 @@ update msg model =
                                 [ Button.raised
                                 , Button.colored
                                 , Button.ripple
-                                , Button.onClick (ButtonPageInfoRefresh pageUrl)
+                                , Button.onClick (ButtonPageInfoRefresh location)
                                 ]
                                 [ text "Refresh"
                                 ]
@@ -277,11 +302,18 @@ update msg model =
             , NoneOutMsg
             )
 
-        ButtonPageInfoRefresh pageUrl ->
+        ButtonPageInfoRefresh location ->
             ( model
-            , Task.perform (PageInfoFetchFail pageUrl)
-                PageInfoFetchSucceed
-                (Http.getString <| pageUrl.path ++ "/index.json")
+            , Task.attempt
+                (\result ->
+                    case result of
+                        Err msg ->
+                            PageInfoFetchFail location msg
+
+                        Ok msg ->
+                            PageInfoFetchSucceed msg
+                )
+                (Http.toTask <| Http.getString <| location.hash ++ "/index.json")
             , NoneOutMsg
             )
 
@@ -289,10 +321,10 @@ update msg model =
             case model.pageDriverModel of
                 HomePage homePage ->
                     let
-                        ( homePage, homePageCmds, homePageOutMsg ) =
+                        ( homePageNext, homePageCmds, homePageOutMsg ) =
                             HomePage.update homePageMsg homePage
                     in
-                        ( { model | pageDriverModel = HomePage homePage }
+                        ( { model | pageDriverModel = HomePage homePageNext }
                         , Cmd.map HomePageMsg homePageCmds
                         , NoneOutMsg
                         )
@@ -324,18 +356,18 @@ view model =
     case model.pageDriverModel of
         HomePage page ->
             Debug.log "HomePage"
-                Html.App.map
+                Html.map
                 HomePageMsg
                 (HomePage.view page)
 
         EmptyPlacePage page ->
             Debug.log "EmptyPlacePage"
-                Html.App.map
+                Html.map
                 EmptyPlacePageMsg
                 (EmptyPlacePage.view page)
 
         InPlaceAlertPage page ->
             Debug.log "InPlaceAlertPage"
-                Html.App.map
+                Html.map
                 InPlaceAlertPageMsg
                 (InPlaceAlertPage.view page)

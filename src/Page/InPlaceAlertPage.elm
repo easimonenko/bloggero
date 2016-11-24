@@ -1,7 +1,6 @@
 module Page.InPlaceAlertPage exposing (Model, Msg, init, update, view)
 
 import Html exposing (..)
-import Html.App
 import Alert.AlertLevel as AlertLevel
 import Alert.InPlaceAlert as InPlaceAlert
 
@@ -40,4 +39,4 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    Html.App.map InPlaceAlertMsg (InPlaceAlert.view model.inPlaceAlert)
+    Html.map InPlaceAlertMsg (InPlaceAlert.view model.inPlaceAlert)

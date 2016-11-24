@@ -1,10 +1,11 @@
 module Blog.PostList exposing (Model, Msg, OutMsg(..), init, update, view)
 
 import Html exposing (..)
-import Html.App
 import Http
 import Json.Decode exposing (..)
+import Result exposing (..)
 import Task
+import Tuple exposing (..)
 
 
 -- Material Design Lite modules
@@ -51,14 +52,23 @@ init root =
       , alertInfo = ""
       , alertLevel = AlertLevel.NoneLevel
       }
-    , Task.perform BlogConfigFetchFail BlogConfigFetchSucceed (Http.getString <| root ++ "/index.json")
+    , Task.attempt
+        (\result ->
+            case result of
+                Err msg ->
+                    BlogConfigFetchFail msg
+
+                Ok msg ->
+                    BlogConfigFetchSucceed msg
+        )
+        (Http.toTask <| Http.getString <| root ++ "/index.json")
     , NoneOutMsg
     )
 
 
 tuple2triple : ( a, b ) -> c -> ( a, b, c )
 tuple2triple t v =
-    ( fst t, snd t, v )
+    ( first t, second t, v )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, OutMsg )
@@ -70,7 +80,7 @@ update msg model =
         BlogConfigFetchSucceed config ->
             let
                 postListResult =
-                    decodeString ("blog" := (object1 identity ("posts" := list string))) config
+                    decodeString (field "blog" (Json.Decode.map identity (field "posts" <| list string))) config
             in
                 case postListResult of
                     Ok postList ->
@@ -91,4 +101,4 @@ view model =
                 List.map (\postId -> MdlList.li [] [ text postId ]) model.postList
 
         Just inPlaceAlert ->
-            Html.App.map InPlaceAlertMsg (InPlaceAlert.view inPlaceAlert)
+            Html.map InPlaceAlertMsg (InPlaceAlert.view inPlaceAlert)

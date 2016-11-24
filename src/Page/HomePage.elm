@@ -1,7 +1,7 @@
 module Page.HomePage exposing (Model, Msg, Config, init, update, view)
 
 import Html exposing (..)
-import Html.App
+import Tuple exposing (..)
 
 
 -- Material Design Lite modules
@@ -57,7 +57,7 @@ init config =
 
 tuple2triple : ( a, b ) -> c -> ( a, b, c )
 tuple2triple t v =
-    ( fst t, snd t, v )
+    ( first t, second t, v )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, OutMsg )
@@ -84,4 +84,4 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    Html.App.map PostListMsg (PostList.view model.postList)
+    Html.map PostListMsg (PostList.view model.postList)

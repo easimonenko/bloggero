@@ -1,7 +1,6 @@
 module Alert.AlertList exposing (Model, Msg(..), init, update, view, add)
 
 import Html exposing (..)
-import Html.App
 import Material
 import Material.List as MdlList
 import Alert.Alert as Alert
@@ -64,4 +63,4 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    MdlList.ul [] <| List.map (Html.App.map AlertMsg << Alert.view) model.alerts
+    MdlList.ul [] <| List.map (Html.map AlertMsg << Alert.view) model.alerts
