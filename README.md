@@ -1,4 +1,5 @@
 # bloggero-elm-mdl
+
 Bloggero -- engine for static blogs with a single page interface written in Elm
 with Material Design Light.
 
@@ -15,21 +16,27 @@ npm install -g elm
 
 ## First
 
-I recommend that you first fork this repository in order to be able to update
-your blog application from these sources.
+I recommend that you first fork or clone this repository in order to be able to
+update your blog application from these sources.
 
 ## Build
 
-Go into the downloaded directory then: 
+Go into the downloaded directory then:
 
 ``` sh
-npm run build
+npm run build -- --output=the_path_to_your_blog/app.js
 ```
 
 This will download the required packages for Elm and build the application
 from source.
 
-## Using
+If You want to build for sample a blog, run:
+
+``` sh
+npm run build -- --output=sample/app.js
+```
+
+## Usage
 
 Once setup, you can edit the blog page as plain text files. Supported formats
 are Markdown and HTML.
@@ -48,11 +55,20 @@ For non-static pages write the appropriate code for Elm in the
 Run a static web server:
 
 ``` sh
-npm start
+npm start -- --output=the_path_to_your_blog/app.js --dir=the_path_to_your_blog
 ```
 
-Please note that the packages required by Elm are installed automatically, but you
-can install them yourself:
+If You want to see for sample a blog, run:
+
+``` sh
+npm start -- --output=sample/app.js --dir=sample
+```
+
+If You want to your blog automatically shows up in the browser, add the option
+`--open`.
+
+Please note that the packages required by Elm are installed automatically, but
+you can install them yourself:
 
 ``` sh
 npm install -g elm
@@ -61,23 +77,24 @@ elm package install
 
 ## Development
 
-For automated building and reloading of the application, you can use [elm-live](https://github.com/tomekwi/elm-live):
+For automated building and reloading of the application, you can use
+[elm-live](https://github.com/tomekwi/elm-live):
 
 ``` sh
-npm start
+npm start -- --output=the_path_to_your_blog/app.js --dir=the_path_to_your_blog
 ```
 
 ## Customizing
 
-To configure the blog/website, edit the `package.json`. Pay special attention to what is
-in the directory `sample` is a example template. For your blog, copy those files
-to a new directory, and then edit the `package.json` to point to your new
-directory..
+To configure the blog/website, edit the `package.json`. Pay special attention to
+what is in the directory `sample` is a example template. For your blog, copy
+those files to a new directory, and then edit the `package.json` to point to
+your new directory.
 
 ## Technologies
 
-The project is written in Elm version 0.17 using the elm-mdl, which implements
-on Elm user interface Material Design Lite.
+The project is written in Elm version 0.18 using the elm-mdl (currently by
+MichaelCombs28), which implements on Elm user interface Material Design Lite.
 
 ---
 

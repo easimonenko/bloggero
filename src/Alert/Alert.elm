@@ -1,4 +1,4 @@
-module Alert.Alert exposing (Model, Msg(..), Level(..), init, update, view)
+module Alert.Alert exposing (Model, Msg(..), init, update, view)
 
 import Html exposing (..)
 import Material
@@ -6,21 +6,15 @@ import Material.Button as Button
 import Material.Icon as Icon
 import Material.List as MdlList
 import Material.Options as MdlOptions
+import Alert.AlertLevel as AlertLevel
 
 
 type alias Model =
     { mdl : Material.Model
     , id : Int
-    , level : Level
+    , level : AlertLevel.Level
     , message : String
     }
-
-
-type Level
-    = SuccessLevel
-    | InfoLevel
-    | WarningLevel
-    | DangerLevel
 
 
 type Msg
@@ -28,7 +22,7 @@ type Msg
     | AlertClose Int
 
 
-init : Level -> Int -> String -> ( Model, Cmd Msg )
+init : AlertLevel.Level -> Int -> String -> ( Model, Cmd Msg )
 init level id message =
     ( { mdl = Material.model
       , id = id
@@ -51,17 +45,20 @@ view model =
     let
         alertLevel level =
             case level of
-                SuccessLevel ->
+                AlertLevel.SuccessLevel ->
                     "success"
 
-                InfoLevel ->
+                AlertLevel.InfoLevel ->
                     "info"
 
-                WarningLevel ->
+                AlertLevel.WarningLevel ->
                     "warning"
 
-                DangerLevel ->
+                AlertLevel.DangerLevel ->
                     "danger"
+
+                AlertLevel.NoneLevel ->
+                    "none"
     in
         MdlList.li [ MdlOptions.cs <| "alert-" ++ (alertLevel model.level) ]
             [ MdlList.content [] [ text model.message ]

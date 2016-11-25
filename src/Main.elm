@@ -1,17 +1,21 @@
 port module Main exposing (main)
 
 import Html exposing (..)
-import Html.App
 import Html.Attributes exposing (class, classList, href, property, style)
 import Html.Attributes.Extra exposing (innerHtml)
 import Http
-import Json.Decode exposing ((:=), decodeString, list, maybe, object5, string)
+import Json.Decode exposing (field, decodeString, list, maybe, map5, string)
 import Json.Encode
 import List exposing (filter, head, map, member, tail)
+import List.Extra exposing (find)
 import Maybe exposing (withDefault)
+import Navigation
 import String exposing (split)
 import Task
-import List.Extra exposing (find)
+
+
+-- Material Design Lite modules
+
 import Material
 import Material.Button as Button
 import Material.Elevation as Elevation
@@ -20,31 +24,23 @@ import Material.Footer as Footer
 import Material.Icon as Icon
 import Material.Layout as Layout
 import Material.Snackbar as Snackbar
-import Navigation
+
+
+-- Bloggero modules
+
 import Alert.AlertList as AlertList
-import Alert.Alert as Alert
+import Alert.AlertLevel as AlertLevel
 import Page
-
-
-main : Program Never
-main =
-    Navigation.program (Navigation.makeParser urlParser)
-        { init = init
-        , view = view
-        , subscriptions = subscriptions
-        , update = update
-        , urlUpdate = urlUpdate
-        }
 
 
 type alias Model =
     { mdl : Material.Model
+    , location : Navigation.Location
     , alertList : AlertList.Model
     , page : Maybe Page.Model
     , snackbar : Snackbar.Model ()
     , config :
         { title : String
-        , root : String
         , mode : Mode
         , sections : List SectionItem
         }
@@ -78,7 +74,8 @@ type Placement
 
 type Msg
     = Mdl (Material.Msg Msg)
-    | ConfigFetchSucceed { path : String, query : String } String
+    | LocationChange Navigation.Location
+    | ConfigFetchSucceed Navigation.Location String
     | ConfigFetchFail Http.Error
     | SnackbarMsg (Snackbar.Msg ())
     | AlertListMsg AlertList.Msg
@@ -89,20 +86,40 @@ type Msg
 port title : String -> Cmd msg
 
 
-init : Result String { path : String, query : String } -> ( Model, Cmd Msg )
-init result =
+main : Program Never Model Msg
+main =
+    Navigation.program locationChangeHandler
+        { init = init
+        , view = view
+        , subscriptions = subscriptions
+        , update = update
+        }
+
+
+locationChangeHandler : Navigation.Location -> Msg
+locationChangeHandler location =
+    LocationChange location
+
+
+pagePath : Navigation.Location -> String
+pagePath location =
+    String.dropLeft 2 location.hash
+
+
+init : Navigation.Location -> ( Model, Cmd Msg )
+init location =
     let
         ( alertList, alertListCmds ) =
             AlertList.init
 
         model =
             { mdl = Material.model
+            , location = location
             , snackbar = Snackbar.model
             , alertList = alertList
             , page = Nothing
             , config =
                 { title = ""
-                , root = ""
                 , mode = DevelopmentMode
                 , sections = []
                 }
@@ -110,40 +127,35 @@ init result =
             , sectionId = Nothing
             }
 
-        loadConfig parsedUrl =
-            Task.perform ConfigFetchFail (ConfigFetchSucceed parsedUrl) (Http.getString "/config.json")
-    in
-        case result of
-            Err info ->
-                let
-                    ( alertList, alertListCmds ) =
-                        AlertList.add model.alertList Alert.InfoLevel ("Parsing URL: " ++ info)
-                in
-                    ( { model | alertList = alertList }
-                    , Cmd.batch
-                        [ Layout.sub0 Mdl
-                        , Cmd.map AlertListMsg alertListCmds
-                        , loadConfig { path = "/error/unknown-url", query = "" }
-                        ]
-                    )
+        loadConfig location =
+            Task.attempt
+                (\result ->
+                    case result of
+                        Err msg ->
+                            ConfigFetchFail msg
 
-            Ok pageUrl ->
-                if pageUrl.path == "" then
-                    let
-                        ( alertList, alertListCmds ) =
-                            AlertList.add model.alertList Alert.InfoLevel "Redirect to /home."
-                    in
-                        ( { model | alertList = alertList }
-                        , Cmd.batch
-                            [ Layout.sub0 Mdl
-                            , Cmd.map AlertListMsg alertListCmds
-                            , loadConfig { path = "/home", query = pageUrl.query }
-                            ]
-                        )
-                else
-                    ( model
-                    , Cmd.batch [ Layout.sub0 Mdl, loadConfig pageUrl, Cmd.map AlertListMsg alertListCmds ]
-                    )
+                        Ok msg ->
+                            ConfigFetchSucceed location msg
+                )
+                (Http.toTask <| Http.getString "/config.json")
+    in
+        if pagePath location == "" then
+            let
+                ( alertList, alertListCmds ) =
+                    AlertList.add model.alertList AlertLevel.InfoLevel "Redirect to /home."
+            in
+                ( { model | alertList = alertList }
+                , Cmd.batch
+                    [ Layout.sub0 Mdl
+                    , Cmd.map AlertListMsg alertListCmds
+                    , loadConfig { location | hash = "/#!/home" }
+                    , Navigation.modifyUrl "/#!/home"
+                    ]
+                )
+        else
+            ( model
+            , Cmd.batch [ Layout.sub0 Mdl, loadConfig location, Cmd.map AlertListMsg alertListCmds ]
+            )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -152,25 +164,77 @@ update msg model =
         Mdl mdlMsg ->
             Material.update mdlMsg model
 
+        LocationChange location ->
+            if location.hash == "" then
+                let
+                    ( alertList, alertListCmds ) =
+                        AlertList.add model.alertList AlertLevel.WarningLevel "Redirect to /home"
+                in
+                    ( { model | location = location, alertList = alertList }
+                    , Cmd.batch
+                        [ Cmd.map AlertListMsg alertListCmds
+                        , Navigation.modifyUrl "/#!/home"
+                        ]
+                    )
+            else
+                let
+                    ( page, pageFx, outMsg ) =
+                        Page.init location
+
+                    section =
+                        find
+                            (\item ->
+                                item.route
+                                    == "/"
+                                    ++ withDefault ""
+                                        (head <| withDefault [] (tail (split "/" location.hash)))
+                            )
+                            model.config.sections
+                in
+                    ( { model
+                        | location = location
+                        , page = Just page
+                        , sectionId = Maybe.map .id section
+                      }
+                    , Cmd.batch
+                        [ title <|
+                            model.config.title
+                                ++ case section of
+                                    Just s ->
+                                        " - " ++ s.title
+
+                                    Nothing ->
+                                        ""
+                        , Cmd.map PageMsg pageFx
+                        , if model.mdl.layout.isDrawerOpen then
+                            Task.perform identity (Task.succeed HideDrawer)
+                          else
+                            Cmd.none
+                        ]
+                    )
+
         ConfigFetchFail httpError ->
             let
                 message =
                     "The config is not loaded "
                         ++ case httpError of
+                            Http.BadUrl info ->
+                                "[BadUrl]: " ++ info
+
                             Http.Timeout ->
                                 "[Timeout]."
 
                             Http.NetworkError ->
                                 "[NetworkError]."
 
-                            Http.UnexpectedPayload info ->
-                                "[UnexpectedPayload]: " ++ info
+                            Http.BadStatus response ->
+                                "[BadStatus]: " ++ (toString response.status.code) ++ " - " ++ response.status.message
 
-                            Http.BadResponse code info ->
-                                "[BadResponse]: " ++ (toString code) ++ " - " ++ info
+                            Http.BadPayload info response ->
+                                "[BadPayload]: " ++ info
 
                 ( alertList, alertListCmds ) =
-                    AlertList.add model.alertList Alert.DangerLevel message
+                    AlertList.add model.alertList AlertLevel.DangerLevel message
             in
                 ( { model | alertList = alertList, isConfigLoaded = Just False }
                 , Cmd.batch
@@ -178,18 +242,15 @@ update msg model =
                     ]
                 )
 
-        ConfigFetchSucceed pageUrl config ->
+        ConfigFetchSucceed location config ->
             let
                 blogTitle =
-                    decodeString ("title" := string) config
-
-                blogRoot =
-                    decodeString ("root" := string) config
+                    decodeString (field "title" string) config
 
                 blogMode =
                     decodeString
-                        ("mode"
-                            := Json.Decode.map
+                        (field "mode" <|
+                            Json.Decode.map
                                 (\item ->
                                     case item of
                                         "development" ->
@@ -230,22 +291,22 @@ update msg model =
 
                 sectionItemListDecoder =
                     list
-                        (object5 SectionItem
-                            ("id" := string)
-                            ("title" := string)
-                            ("route" := string)
-                            (maybe ("icon" := string))
-                            ("placement" := placementItemListDecoder)
+                        (map5 SectionItem
+                            (field "id" string)
+                            (field "title" string)
+                            (field "route" string)
+                            (maybe (field "icon" string))
+                            (field "placement" placementItemListDecoder)
                         )
 
                 blogSections =
-                    decodeString ("sections" := sectionItemListDecoder) config
+                    decodeString (field "sections" sectionItemListDecoder) config
             in
-                case Result.map4 (,,,) blogTitle blogRoot blogMode blogSections of
-                    Ok ( title', root', mode', sections' ) ->
+                case Result.map3 (,,) blogTitle blogMode blogSections of
+                    Ok ( blogTitle, blogMode, blogSections ) ->
                         let
                             ( alertList, alertListCmds ) =
-                                AlertList.add model.alertList Alert.SuccessLevel "The config is loaded."
+                                AlertList.add model.alertList AlertLevel.SuccessLevel "The config is loaded."
                         in
                             ( { model
                                 | alertList = alertList
@@ -255,16 +316,15 @@ update msg model =
                                             model.config
                                     in
                                         { modelConfig
-                                            | title = title'
-                                            , root = root'
-                                            , mode = mode'
-                                            , sections = sections'
+                                            | title = blogTitle
+                                            , mode = blogMode
+                                            , sections = blogSections
                                         }
                                 , isConfigLoaded = Just True
                               }
                             , Cmd.batch
-                                [ title title'
-                                , Navigation.modifyUrl <| "/#!" ++ pageUrl.path
+                                [ title blogTitle
+                                , Navigation.modifyUrl <| "/#!" ++ location.hash
                                 , Cmd.map AlertListMsg alertListCmds
                                 ]
                             )
@@ -275,7 +335,7 @@ update msg model =
                                 "The config is not loaded. " ++ info
 
                             ( alertList, alertListCmds ) =
-                                AlertList.add model.alertList Alert.DangerLevel message
+                                AlertList.add model.alertList AlertLevel.DangerLevel message
                         in
                             ( { model
                                 | alertList = alertList
@@ -291,31 +351,38 @@ update msg model =
             in
                 ( { model | alertList = updatedAlertList }, Cmd.map AlertListMsg alertListCmds )
 
+        {--TODO: replace on OutMsg --}
         PageMsg pageMsg ->
             case pageMsg of
                 Page.PageInfoFetchFail pageUrl httpError ->
                     let
                         message =
                             case httpError of
-                                Http.BadResponse statusCode statusInfo ->
-                                    "Bad response: " ++ (toString statusCode) ++ " - " ++ statusInfo
+                                Http.BadUrl info ->
+                                    "[BadUrl]: " ++ info
 
                                 Http.Timeout ->
-                                    "Http Timeout."
+                                    "[Timeout]"
 
                                 Http.NetworkError ->
-                                    "Network error."
+                                    "[NetworkError]"
 
-                                Http.UnexpectedPayload info ->
-                                    "Unexpected payload: " ++ info
+                                Http.BadStatus response ->
+                                    "[BadStatus]: "
+                                        ++ (toString response.status.code)
+                                        ++ " - "
+                                        ++ response.status.message
+
+                                Http.BadPayload info response ->
+                                    "[BadPayload]: " ++ info
 
                         ( alertList, alertListCmds ) =
-                            AlertList.add model.alertList Alert.DangerLevel message
+                            AlertList.add model.alertList AlertLevel.DangerLevel message
                     in
                         case model.page of
                             Just page ->
                                 let
-                                    ( updatedPage, pageCmds ) =
+                                    ( updatedPage, pageCmds, outMsg ) =
                                         Page.update pageMsg page
                                 in
                                     ( { model | page = Just updatedPage, alertList = alertList }
@@ -328,7 +395,7 @@ update msg model =
                             Nothing ->
                                 let
                                     ( alertList2, alertListCmds2 ) =
-                                        AlertList.add alertList Alert.DangerLevel "WTF: page is Nothing!"
+                                        AlertList.add alertList AlertLevel.DangerLevel "WTF: page is Nothing!"
                                 in
                                     ( { model | alertList = alertList2 }
                                     , Cmd.batch
@@ -337,43 +404,35 @@ update msg model =
                                         ]
                                     )
 
-                Page.PageInfoFetchSucceed _ ->
-                    case model.page of
-                        Just page ->
-                            let
-                                ( updatedPage, pageCmds ) =
-                                    Page.update pageMsg page
-                            in
-                                ( { model | page = Just updatedPage }
-                                , Cmd.batch
-                                    [ Cmd.map PageMsg pageCmds
-                                    ]
-                                )
-
-                        Nothing ->
-                            let
-                                ( alertList, alertListCmds ) =
-                                    AlertList.add model.alertList Alert.DangerLevel "WTF: page is Nothing!"
-                            in
-                                ( { model | alertList = alertList }
-                                , Cmd.map AlertListMsg alertListCmds
-                                )
-
                 _ ->
                     case model.page of
                         Just page ->
                             let
-                                ( updatedPage, pageCmds ) =
+                                ( updatedPage, pageCmds, outMsg ) =
                                     Page.update pageMsg page
                             in
-                                ( { model | page = Just updatedPage }
-                                , Cmd.map PageMsg pageCmds
-                                )
+                                case outMsg of
+                                    Page.NoneOutMsg ->
+                                        ( { model | page = Just updatedPage }
+                                        , Cmd.map PageMsg pageCmds
+                                        )
+
+                                    Page.AlertOutMsg level info ->
+                                        let
+                                            ( alertList, alertListCmds ) =
+                                                AlertList.add model.alertList level info
+                                        in
+                                            ( { model | page = Just updatedPage }
+                                            , Cmd.batch
+                                                [ Cmd.map PageMsg pageCmds
+                                                , Cmd.map AlertListMsg alertListCmds
+                                                ]
+                                            )
 
                         Nothing ->
                             let
                                 ( alertList, alertListCmds ) =
-                                    AlertList.add model.alertList Alert.DangerLevel "WTF: page is Nothing!"
+                                    AlertList.add model.alertList AlertLevel.DangerLevel "WTF: page is Nothing!"
                             in
                                 ( { model | alertList = alertList }
                                 , Cmd.map AlertListMsg alertListCmds
@@ -381,90 +440,21 @@ update msg model =
 
         SnackbarMsg snackbarMsg ->
             let
-                ( snackbar', snackbarCmds ) =
+                ( snackbar, snackbarCmds ) =
                     Snackbar.update snackbarMsg model.snackbar
             in
-                ( { model | snackbar = snackbar' }
+                ( { model | snackbar = snackbar }
                 , Cmd.map SnackbarMsg snackbarCmds
                 )
 
         HideDrawer ->
-            ( model, Task.perform identity identity (Task.succeed (Layout.toggleDrawer Mdl)) )
+            ( model, Task.perform identity (Task.succeed (Layout.toggleDrawer Mdl)) )
 
 
+subscriptions : { model | mdl : Material.Model } -> Sub Msg
 subscriptions =
-    .mdl >> Layout.subs Mdl
-
-
-urlParser :
-    Navigation.Location
-    -> Result String { path : String, query : String }
-urlParser location =
-    Ok { path = String.dropLeft 2 location.hash, query = String.dropLeft 1 location.search }
-
-
-urlUpdate : Result String { path : String, query : String } -> Model -> ( Model, Cmd Msg )
-urlUpdate result model =
-    case result of
-        Err info ->
-            let
-                ( alertList, alertListCmds ) =
-                    AlertList.add model.alertList Alert.WarningLevel <| "Unknown URL: " ++ info
-            in
-                ( { model | alertList = alertList }
-                , Cmd.batch
-                    [ title <| model.config.title ++ " - Unknown URL"
-                    , Cmd.map AlertListMsg alertListCmds
-                    ]
-                )
-
-        Ok parsedUrl ->
-            if parsedUrl.path == "" then
-                let
-                    ( alertList, alertListCmds ) =
-                        AlertList.add model.alertList Alert.WarningLevel "Redirect to /home"
-                in
-                    ( { model | alertList = alertList }
-                    , Cmd.batch
-                        [ Cmd.map AlertListMsg alertListCmds
-                        , Navigation.modifyUrl "/#!/home"
-                        ]
-                    )
-            else
-                let
-                    ( page, pageFx ) =
-                        Page.init parsedUrl.path parsedUrl.query model.config.root
-
-                    section =
-                        find
-                            (\item ->
-                                item.route
-                                    == "/"
-                                    ++ withDefault ""
-                                        (head <| withDefault [] (tail (split "/" parsedUrl.path)))
-                            )
-                            model.config.sections
-                in
-                    ( { model
-                        | page = Just page
-                        , sectionId = Maybe.map .id section
-                      }
-                    , Cmd.batch
-                        [ title
-                            <| model.config.title
-                            ++ case section of
-                                Just s ->
-                                    " - " ++ s.title
-
-                                Nothing ->
-                                    ""
-                        , Cmd.map PageMsg pageFx
-                        , if model.mdl.layout.isDrawerOpen then
-                            Task.perform identity identity (Task.succeed HideDrawer)
-                          else
-                            Cmd.none
-                        ]
-                    )
+    -- .mdl >> Layout.subs Mdl
+    Material.subscriptions Mdl
 
 
 headerView : Model -> List (Html Msg)
@@ -509,8 +499,8 @@ headerView model =
                     )
                 , Layout.spacer
                 , Layout.navigation []
-                    (map makeLink
-                        <| filter (\item -> member HeaderPlacement item.placement) model.config.sections
+                    (List.map makeLink <|
+                        filter (\item -> member HeaderPlacement item.placement) model.config.sections
                     )
                 ]
             ]
@@ -595,8 +585,8 @@ drawerView model =
             ]
         , hr [] []
         , Layout.navigation []
-            (map makeLink
-                <| filter (\item -> member DrawerPlacement item.placement) model.config.sections
+            (List.map makeLink <|
+                filter (\item -> member DrawerPlacement item.placement) model.config.sections
             )
         ]
 
@@ -609,10 +599,13 @@ mainView model =
                 Just True ->
                     case model.page of
                         Just page ->
-                            Html.App.map PageMsg (Page.view page)
+                            Html.map
+                                PageMsg
+                                (Page.view page)
 
                         Nothing ->
-                            text ""
+                            text
+                                ""
 
                 Just False ->
                     text ""
@@ -623,7 +616,7 @@ mainView model =
         , Grid.cell [ Grid.size All 2 ]
             (case model.config.mode of
                 DevelopmentMode ->
-                    [ Html.App.map AlertListMsg (AlertList.view model.alertList) ]
+                    [ Html.map AlertListMsg (AlertList.view model.alertList) ]
 
                 _ ->
                     []
@@ -639,8 +632,8 @@ mainView model =
                 ]
         , right =
             Footer.right []
-                [ Footer.html
-                    <| a
+                [ Footer.html <|
+                    a
                         [ href "https://github.com/easimonenko/bloggero-elm-mdl"
                         , Html.Attributes.property "role" (Json.Encode.string "button")
                         , Html.Attributes.title "GitHub"
@@ -653,7 +646,7 @@ mainView model =
                         ]
                 ]
         }
-    , Snackbar.view model.snackbar |> Html.App.map SnackbarMsg
+    , Snackbar.view model.snackbar |> Html.map SnackbarMsg
     ]
 
 
