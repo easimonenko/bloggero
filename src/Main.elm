@@ -148,13 +148,17 @@ init location =
                 , Cmd.batch
                     [ Layout.sub0 Mdl
                     , Cmd.map AlertListMsg alertListCmds
-                    , loadConfig { location | hash = "/#!/home" }
-                    , Navigation.modifyUrl "/#!/home"
+                    , loadConfig { location | hash = "#!/home" }
+                      --, Navigation.modifyUrl "/#!/home"
                     ]
                 )
         else
             ( model
-            , Cmd.batch [ Layout.sub0 Mdl, loadConfig location, Cmd.map AlertListMsg alertListCmds ]
+            , Cmd.batch
+                [ Layout.sub0 Mdl
+                , loadConfig location
+                , Cmd.map AlertListMsg alertListCmds
+                ]
             )
 
 
@@ -165,10 +169,10 @@ update msg model =
             Material.update mdlMsg model
 
         LocationChange location ->
-            if location.hash == "" then
+            if pagePath location == "" then
                 let
                     ( alertList, alertListCmds ) =
-                        AlertList.add model.alertList AlertLevel.WarningLevel "Redirect to /home"
+                        AlertList.add model.alertList AlertLevel.InfoLevel "Redirect to /home"
                 in
                     ( { model | location = location, alertList = alertList }
                     , Cmd.batch
@@ -306,7 +310,10 @@ update msg model =
                     Ok ( blogTitle, blogMode, blogSections ) ->
                         let
                             ( alertList, alertListCmds ) =
-                                AlertList.add model.alertList AlertLevel.SuccessLevel "The config is loaded."
+                                AlertList.add
+                                    model.alertList
+                                    AlertLevel.SuccessLevel
+                                    "The config is loaded."
                         in
                             ( { model
                                 | alertList = alertList
@@ -324,7 +331,7 @@ update msg model =
                               }
                             , Cmd.batch
                                 [ title blogTitle
-                                , Navigation.modifyUrl <| "/#!" ++ location.hash
+                                , Navigation.modifyUrl <| "/" ++ location.hash
                                 , Cmd.map AlertListMsg alertListCmds
                                 ]
                             )
