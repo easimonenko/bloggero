@@ -6,6 +6,7 @@
   "scripts": {
     "build": "elm make src/Main.elm",
     "start": "elm-live src/Main.elm",
+    "watch": "elm-live src/*.elm --pushstate --debug",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
