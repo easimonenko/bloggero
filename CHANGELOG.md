@@ -1,5 +1,10 @@
 # Bloggero ChangeLog
 
+## 2016-12-01, Version 0.2.1
+
+* Fixed redirecting to Home.
+* Add support for watching with debug.
+
 ## 2016-11-25, Version 0.2.0
 
 * Port to Elm 0.18.
