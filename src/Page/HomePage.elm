@@ -1,4 +1,4 @@
-module Page.HomePage exposing (Model, Msg, Config, init, update, view)
+module Page.HomePage exposing (Model, Msg, Config, init, update, view, defaultConfig)
 
 import Html exposing (..)
 import Tuple exposing (..)
@@ -11,13 +11,13 @@ import Material
 
 -- Bloggero modules
 
-import Alert.Alert as Alert
 import Alert.AlertLevel as AlertLevel
 import Blog.PostList as PostList
 
 
 type alias Model =
     { postList : PostList.Model
+    , title : String
     , mdl : Material.Model
     }
 
@@ -34,6 +34,7 @@ type OutMsg
 
 type alias Config =
     { root : String
+    , title : String
     , blogRoot : String
     }
 
@@ -42,7 +43,11 @@ init : Config -> ( Model, Cmd Msg, OutMsg )
 init config =
     let
         ( postList, postListCmds, postListOutMsg ) =
-            PostList.init config.blogRoot
+            let
+                defaultConfig =
+                    PostList.defaultConfig
+            in
+                PostList.init { defaultConfig | root = config.blogRoot }
 
         outMsg =
             case postListOutMsg of
@@ -52,7 +57,18 @@ init config =
                 PostList.AlertOutMsg level message ->
                     AlertOutMsg level message
     in
-        ( { postList = postList, mdl = Material.model }, Cmd.map PostListMsg postListCmds, outMsg )
+        ( { postList = postList, title = config.title, mdl = Material.model }
+        , Cmd.map PostListMsg postListCmds
+        , outMsg
+        )
+
+
+defaultConfig : Config
+defaultConfig =
+    { title = "Home"
+    , root = "/home"
+    , blogRoot = "/blog"
+    }
 
 
 tuple2triple : ( a, b ) -> c -> ( a, b, c )
@@ -84,4 +100,7 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    Html.map PostListMsg (PostList.view model.postList)
+    div []
+        [ h1 [] [ text model.title ]
+        , Html.map PostListMsg (PostList.view model.postList)
+        ]

@@ -1,6 +1,7 @@
-module Blog.PostList exposing (Model, Msg, OutMsg(..), init, update, view)
+module Blog.PostList exposing (Model, Msg, OutMsg(..), init, update, view, defaultConfig)
 
 import Html exposing (..)
+import Html.Attributes exposing (..)
 import Http
 import Json.Decode exposing (..)
 import Result exposing (..)
@@ -16,7 +17,6 @@ import Material.List as MdlList
 
 -- Bloggero modules
 
-import Alert.Alert as Alert
 import Alert.AlertLevel as AlertLevel
 import Alert.InPlaceAlert as InPlaceAlert
 
@@ -24,6 +24,7 @@ import Alert.InPlaceAlert as InPlaceAlert
 type alias Model =
     { mdl : Material.Model
     , root : String
+    , title : String
     , postList : List String
     , inPlaceAlert : Maybe InPlaceAlert.Model
     , alertInfo : String
@@ -43,10 +44,17 @@ type OutMsg
     | AlertOutMsg AlertLevel.Level String
 
 
-init : String -> ( Model, Cmd Msg, OutMsg )
-init root =
+type alias PostListConfig =
+    { root : String
+    , title : String
+    }
+
+
+init : PostListConfig -> ( Model, Cmd Msg, OutMsg )
+init config =
     ( { mdl = Material.model
-      , root = root
+      , root = config.root
+      , title = config.title
       , postList = []
       , inPlaceAlert = Nothing
       , alertInfo = ""
@@ -61,9 +69,16 @@ init root =
                 Ok msg ->
                     BlogConfigFetchSucceed msg
         )
-        (Http.toTask <| Http.getString <| root ++ "/index.json")
+        (Http.toTask <| Http.getString <| config.root ++ "/index.json")
     , NoneOutMsg
     )
+
+
+defaultConfig : PostListConfig
+defaultConfig =
+    { root = "/blog"
+    , title = "Post List"
+    }
 
 
 tuple2triple : ( a, b ) -> c -> ( a, b, c )
@@ -79,15 +94,25 @@ update msg model =
 
         BlogConfigFetchSucceed config ->
             let
-                postListResult =
-                    decodeString (field "blog" (Json.Decode.map identity (field "posts" <| list string))) config
+                configDecoder =
+                    field "blog" <| Json.Decode.map identity <| field "posts" <| Json.Decode.list string
+
+                configDecodeResult =
+                    decodeString configDecoder config
             in
-                case postListResult of
+                case configDecodeResult of
                     Ok postList ->
                         ( { model | postList = postList }, Cmd.none, NoneOutMsg )
 
                     Err info ->
-                        ( { model | alertInfo = info, alertLevel = AlertLevel.DangerLevel }, Cmd.none, AlertOutMsg AlertLevel.DangerLevel info )
+                        let
+                            ( inPlaceAlert, inPlaceAlertCmds ) =
+                                InPlaceAlert.init AlertLevel.DangerLevel info
+                        in
+                            ( { model | inPlaceAlert = Just inPlaceAlert }
+                            , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                            , AlertOutMsg AlertLevel.DangerLevel info
+                            )
 
         _ ->
             ( model, Cmd.none, NoneOutMsg )
@@ -97,8 +122,19 @@ view : Model -> Html Msg
 view model =
     case model.inPlaceAlert of
         Nothing ->
-            MdlList.ul [] <|
-                List.map (\postId -> MdlList.li [] [ text postId ]) model.postList
+            div []
+                [ h2 []
+                    [ text model.title ]
+                , MdlList.ul
+                    []
+                  <|
+                    List.map
+                        (\postId ->
+                            MdlList.li []
+                                [ a [ href <| "/#!" ++ model.root ++ "/" ++ postId ] [ text postId ] ]
+                        )
+                        model.postList
+                ]
 
         Just inPlaceAlert ->
             Html.map InPlaceAlertMsg (InPlaceAlert.view inPlaceAlert)

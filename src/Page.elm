@@ -177,7 +177,11 @@ update msg model =
                                                 "home" ->
                                                     let
                                                         ( homePage, homePageCmds, homePageOutMsg ) =
-                                                            HomePage.init { root = "/home", blogRoot = "/blog" }
+                                                            let
+                                                                defaultConfig =
+                                                                    HomePage.defaultConfig
+                                                            in
+                                                                HomePage.init { defaultConfig | title = pageTitle }
                                                     in
                                                         ( { modelNext | pageDriverModel = HomePage homePage }
                                                         , Cmd.map HomePageMsg homePageCmds

@@ -149,7 +149,6 @@ init location =
                     [ Layout.sub0 Mdl
                     , Cmd.map AlertListMsg alertListCmds
                     , loadConfig { location | hash = "#!/home" }
-                      --, Navigation.modifyUrl "/#!/home"
                     ]
                 )
         else
