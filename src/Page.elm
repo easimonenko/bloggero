@@ -23,6 +23,7 @@ import Material.Options as Options
 -- Bloggero modules
 
 import Alert.AlertLevel as AlertLevel
+import Blog.BlogPage as BlogPage
 import Page.EmptyPlacePage as EmptyPlacePage
 import Page.HomePage as HomePage
 import Page.InPlaceAlertPage as InPlaceAlertPage
@@ -46,6 +47,7 @@ type Driver
     = HomePage HomePage.Model
     | EmptyPlacePage EmptyPlacePage.Model
     | InPlaceAlertPage InPlaceAlertPage.Model
+    | BlogPage BlogPage.Model
 
 
 type Msg
@@ -58,6 +60,7 @@ type Msg
     | HomePageMsg HomePage.Msg
     | EmptyPlacePageMsg EmptyPlacePage.Msg
     | InPlaceAlertPageMsg InPlaceAlertPage.Msg
+    | BlogPageMsg BlogPage.Msg
 
 
 type OutMsg
@@ -188,6 +191,22 @@ update msg model =
                                                         , AlertOutMsg
                                                             AlertLevel.InfoLevel
                                                             "PageInfoFetchSucceed: contentType = home"
+                                                        )
+
+                                                "blog" ->
+                                                    let
+                                                        ( blogPage, blogPageCmds, blogPageOutMsg ) =
+                                                            let
+                                                                defaultConfig =
+                                                                    BlogPage.defaultConfig
+                                                            in
+                                                                BlogPage.init { defaultConfig | title = pageTitle }
+                                                    in
+                                                        ( { modelNext | pageDriverModel = BlogPage blogPage }
+                                                        , Cmd.map BlogPageMsg blogPageCmds
+                                                        , AlertOutMsg
+                                                            AlertLevel.InfoLevel
+                                                            "PageInfoFetchSucceed: contentType = blog"
                                                         )
 
                                                 unknownType ->
@@ -375,3 +394,9 @@ view model =
                 Html.map
                 InPlaceAlertPageMsg
                 (InPlaceAlertPage.view page)
+
+        BlogPage page ->
+            Debug.log "BlogPage"
+                Html.map
+                BlogPageMsg
+                (BlogPage.view page)
