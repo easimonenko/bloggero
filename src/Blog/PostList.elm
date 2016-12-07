@@ -95,7 +95,10 @@ update msg model =
         BlogConfigFetchSucceed config ->
             let
                 configDecoder =
-                    field "blog" <| Json.Decode.map identity <| field "posts" <| Json.Decode.list string
+                    field "blog" <|
+                        Json.Decode.map identity <|
+                            field "posts" <|
+                                Json.Decode.list string
 
                 configDecodeResult =
                     decodeString configDecoder config
@@ -113,6 +116,16 @@ update msg model =
                             , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
                             , AlertOutMsg AlertLevel.DangerLevel info
                             )
+
+        BlogConfigFetchFail error ->
+            let
+                ( inPlaceAlert, inPlaceAlertCmds ) =
+                    InPlaceAlert.init AlertLevel.DangerLevel "Http Error"
+            in
+                ( { model | inPlaceAlert = Just inPlaceAlert }
+                , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                , AlertOutMsg AlertLevel.DangerLevel "Http Error"
+                )
 
         _ ->
             ( model, Cmd.none, NoneOutMsg )
