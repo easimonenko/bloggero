@@ -355,6 +355,21 @@ update msg model =
                 _ ->
                     ( model, Cmd.none, NoneOutMsg )
 
+        BlogPageMsg blogPageMsg ->
+            case model.pageDriverModel of
+                BlogPage blogPage ->
+                    let
+                        ( blogPageNext, blogPageCmds, blogPageOutMsg ) =
+                            BlogPage.update blogPageMsg blogPage
+                    in
+                        ( { model | pageDriverModel = BlogPage blogPageNext }
+                        , Cmd.map BlogPageMsg blogPageCmds
+                        , NoneOutMsg
+                        )
+
+                _ ->
+                    ( model, Cmd.none, NoneOutMsg )
+
         InPlaceAlertPageMsg inPlaceAlertPageMsg ->
             case model.pageDriverModel of
                 InPlaceAlertPage inPlaceAlertPage ->
