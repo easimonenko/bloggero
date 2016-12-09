@@ -1,5 +1,13 @@
 # Bloggero ChangeLog
 
+## 2016-12-10, Version 0.2.2
+
+* Improved displaying of home page with list of posts.
+* Added support for blog page.
+* Functions pagePath and tuple2triple in Utils module.
+* Improved EmptyPlacePage with info alert about page path.
+* SimplePage for markdown and html pages.
+
 ## 2016-12-01, Version 0.2.1
 
 * Fixed redirecting to Home.
@@ -16,7 +24,7 @@
 
 ## 2016-08-19, Version 0.1.3
 
-Static alerts as in Bootstrap for important messages. Also refactoring of code 
+Static alerts as in Bootstrap for important messages. Also refactoring of code
 and restructuring of sample blog.
 
 ## 2016-07-12, Version 0.1.2
