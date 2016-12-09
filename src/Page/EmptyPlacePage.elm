@@ -1,28 +1,52 @@
 module Page.EmptyPlacePage exposing (Model, Msg, init, update, view)
 
 import Html exposing (..)
+import Navigation
+
+
+-- Bloggero modules
+
+import Alert.InPlaceAlert
+import Alert.AlertLevel
+import Utils
 
 
 type alias Model =
-    ()
+    { location : Navigation.Location
+    , inPlaceAlert : Alert.InPlaceAlert.Model
+    }
 
 
 type Msg
-    = NoneMsg
+    = InPlaceAlertMsg Alert.InPlaceAlert.Msg
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( (), Cmd.none )
+init : Navigation.Location -> ( Model, Cmd Msg )
+init location =
+    let
+        ( inPlaceAlert, inPlaceAlertCmds ) =
+            Alert.InPlaceAlert.init
+                Alert.AlertLevel.InfoLevel
+                ("Loaded page " ++ (Utils.pagePath location))
+    in
+        ( { location = location, inPlaceAlert = inPlaceAlert }
+        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+        )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoneMsg ->
-            ( model, Cmd.none )
+        InPlaceAlertMsg inPlaceAlertMsg ->
+            let
+                ( inPlaceAlert, inPlaceAlertCmds ) =
+                    Alert.InPlaceAlert.update inPlaceAlertMsg model.inPlaceAlert
+            in
+                ( { model | inPlaceAlert = inPlaceAlert }
+                , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                )
 
 
 view : Model -> Html Msg
 view model =
-    text ""
+    Html.map InPlaceAlertMsg (Alert.InPlaceAlert.view model.inPlaceAlert)

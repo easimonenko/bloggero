@@ -27,6 +27,7 @@ import Blog.BlogPage as BlogPage
 import Page.EmptyPlacePage as EmptyPlacePage
 import Page.HomePage as HomePage
 import Page.InPlaceAlertPage as InPlaceAlertPage
+import Utils
 
 
 --import Blog.PostPage
@@ -68,16 +69,11 @@ type OutMsg
     | AlertOutMsg AlertLevel.Level String
 
 
-pagePath : Navigation.Location -> String
-pagePath location =
-    String.dropLeft 2 location.hash
-
-
 init : Navigation.Location -> ( Model, Cmd Msg, OutMsg )
 init location =
     let
         ( emptyPlacePage, emptyPlacePageCmds ) =
-            EmptyPlacePage.init
+            EmptyPlacePage.init location
     in
         ( { mdl = Material.model
           , location = location
@@ -97,23 +93,18 @@ init location =
                         Ok msg ->
                             PageInfoFetchSucceed msg
                 )
-                (Http.toTask <| Http.getString <| (pagePath location) ++ "/index.json")
+                (Http.toTask <| Http.getString <| (Utils.pagePath location) ++ "/index.json")
             , Cmd.map EmptyPlacePageMsg emptyPlacePageCmds
             ]
         , NoneOutMsg
         )
 
 
-tuple2triple : ( a, b ) -> c -> ( a, b, c )
-tuple2triple t v =
-    ( first t, second t, v )
-
-
 update : Msg -> Model -> ( Model, Cmd Msg, OutMsg )
 update msg model =
     case msg of
         Mdl mdlMsg ->
-            tuple2triple (Material.update mdlMsg model) NoneOutMsg
+            Utils.tuple2triple (Material.update mdlMsg model) NoneOutMsg
 
         PageInfoFetchSucceed pageInfo ->
             let
