@@ -1,8 +1,4 @@
 {
   "title": "Home",
-  "content": {
-    "type": "home"
-  },
-  "files": [
-  ]
+  "type": "home"
 }

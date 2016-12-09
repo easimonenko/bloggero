@@ -1,8 +1,6 @@
 {
   "title": "Blog",
-  "content": {
-    "type": "blog"
-  },
+  "type": "blog",
   "blog": {
     "posts": [
       "post1",

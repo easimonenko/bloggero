@@ -27,6 +27,7 @@ import Blog.BlogPage as BlogPage
 import Page.EmptyPlacePage as EmptyPlacePage
 import Page.HomePage as HomePage
 import Page.InPlaceAlertPage as InPlaceAlertPage
+import Page.SimplePage as SimplePage
 import Utils
 
 
@@ -49,6 +50,7 @@ type Driver
     | EmptyPlacePage EmptyPlacePage.Model
     | InPlaceAlertPage InPlaceAlertPage.Model
     | BlogPage BlogPage.Model
+    | SimplePage SimplePage.Model
 
 
 type Msg
@@ -62,6 +64,7 @@ type Msg
     | EmptyPlacePageMsg EmptyPlacePage.Msg
     | InPlaceAlertPageMsg InPlaceAlertPage.Msg
     | BlogPageMsg BlogPage.Msg
+    | SimplePageMsg SimplePage.Msg
 
 
 type OutMsg
@@ -108,137 +111,114 @@ update msg model =
 
         PageInfoFetchSucceed pageInfo ->
             let
-                ( modelUpdated, cmds, outMsg ) =
-                    case decodeString (field "title" string) pageInfo of
-                        Ok pageTitle ->
-                            let
-                                contentDecoder =
-                                    map2 (,) (maybe (field "type" string)) (maybe (field "file" string))
-                            in
-                                case (decodeString <| field "content" contentDecoder) pageInfo of
-                                    Ok ( ct, cf ) ->
-                                        let
-                                            contentType =
-                                                Maybe.withDefault
-                                                    "markdown"
-                                                    ct
-
-                                            contentFile =
-                                                Maybe.withDefault "index.markdown" cf
-
-                                            modelNext =
-                                                { model
-                                                    | title = pageTitle
-                                                    , contentType = contentType
-                                                    , contentFile = contentFile
-                                                }
-                                        in
-                                            case contentType of
-                                                "markdown" ->
-                                                    ( modelNext
-                                                    , Task.attempt
-                                                        (\result ->
-                                                            case result of
-                                                                Err msg ->
-                                                                    PageContentFetchFail msg
-
-                                                                Ok msg ->
-                                                                    PageContentFetchSucceed msg
-                                                        )
-                                                        (Http.toTask <| Http.getString <| model.location.hash ++ "/" ++ contentFile)
-                                                    , AlertOutMsg
-                                                        AlertLevel.InfoLevel
-                                                        "PageInfoFetchSucceed: contentType = markdown"
-                                                    )
-
-                                                "html" ->
-                                                    ( modelNext
-                                                    , Task.attempt
-                                                        (\result ->
-                                                            case result of
-                                                                Err msg ->
-                                                                    PageContentFetchFail msg
-
-                                                                Ok msg ->
-                                                                    PageContentFetchSucceed msg
-                                                        )
-                                                        (Http.toTask <| Http.getString <| model.location.hash ++ "/" ++ contentFile)
-                                                    , AlertOutMsg
-                                                        AlertLevel.InfoLevel
-                                                        "PageInfoFetchSucceed: contentType = html"
-                                                    )
-
-                                                "home" ->
-                                                    let
-                                                        ( homePage, homePageCmds, homePageOutMsg ) =
-                                                            let
-                                                                defaultConfig =
-                                                                    HomePage.defaultConfig
-                                                            in
-                                                                HomePage.init { defaultConfig | title = pageTitle }
-                                                    in
-                                                        ( { modelNext | pageDriverModel = HomePage homePage }
-                                                        , Cmd.map HomePageMsg homePageCmds
-                                                        , AlertOutMsg
-                                                            AlertLevel.InfoLevel
-                                                            "PageInfoFetchSucceed: contentType = home"
-                                                        )
-
-                                                "blog" ->
-                                                    let
-                                                        ( blogPage, blogPageCmds, blogPageOutMsg ) =
-                                                            let
-                                                                defaultConfig =
-                                                                    BlogPage.defaultConfig
-                                                            in
-                                                                BlogPage.init { defaultConfig | title = pageTitle }
-                                                    in
-                                                        ( { modelNext | pageDriverModel = BlogPage blogPage }
-                                                        , Cmd.map BlogPageMsg blogPageCmds
-                                                        , AlertOutMsg
-                                                            AlertLevel.InfoLevel
-                                                            "PageInfoFetchSucceed: contentType = blog"
-                                                        )
-
-                                                unknownType ->
-                                                    let
-                                                        ( inPlaceAlertPage, inPlaceAlertPageCmds ) =
-                                                            InPlaceAlertPage.init
-                                                                AlertLevel.WarningLevel
-                                                                ("Unknown type of page: " ++ unknownType)
-                                                    in
-                                                        ( { modelNext | pageDriverModel = InPlaceAlertPage inPlaceAlertPage }
-                                                        , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
-                                                        , AlertOutMsg
-                                                            AlertLevel.WarningLevel
-                                                            ("Page info fetch succeed, but unknown content type: " ++ unknownType)
-                                                        )
-
-                                    Err info ->
-                                        let
-                                            ( inPlaceAlertPage, inPlaceAlertPageCmds ) =
-                                                InPlaceAlertPage.init AlertLevel.DangerLevel info
-                                        in
-                                            ( { model | pageDriverModel = InPlaceAlertPage inPlaceAlertPage }
-                                            , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
-                                            , AlertOutMsg
-                                                AlertLevel.DangerLevel
-                                                ("Page info fetch succeed, but parsed fail: " ++ info)
-                                            )
-
-                        Err info ->
-                            let
-                                ( inPlaceAlertPage, inPlaceAlertPageCmds ) =
-                                    InPlaceAlertPage.init AlertLevel.DangerLevel info
-                            in
-                                ( { model | pageDriverModel = InPlaceAlertPage inPlaceAlertPage }
-                                , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
-                                , AlertOutMsg
-                                    AlertLevel.WarningLevel
-                                    ("Page info fetch succeed, but parsed fail: " ++ info)
-                                )
+                pageInfoDecoder =
+                    (map2 (,) (field "title" string) (maybe (field "type" string)))
             in
-                ( modelUpdated, cmds, outMsg )
+                case decodeString pageInfoDecoder pageInfo of
+                    Ok ( pageTitle, contentType ) ->
+                        case Maybe.withDefault "markdown" contentType of
+                            "markdown" ->
+                                let
+                                    ( page, pageCmds ) =
+                                        SimplePage.init model.location
+                                in
+                                    ( { model
+                                        | title = pageTitle
+                                        , contentType = "markdown"
+                                        , pageDriverModel = SimplePage page
+                                      }
+                                    , Cmd.map SimplePageMsg pageCmds
+                                    , AlertOutMsg
+                                        AlertLevel.InfoLevel
+                                        "PageInfoFetchSucceed: contentType = markdown"
+                                    )
+
+                            "html" ->
+                                let
+                                    ( page, pageCmds ) =
+                                        SimplePage.init model.location
+                                in
+                                    ( { model
+                                        | title = pageTitle
+                                        , contentType = "html"
+                                        , pageDriverModel = SimplePage page
+                                      }
+                                    , Cmd.map SimplePageMsg pageCmds
+                                    , AlertOutMsg
+                                        AlertLevel.InfoLevel
+                                        "PageInfoFetchSucceed: contentType = html"
+                                    )
+
+                            "home" ->
+                                let
+                                    ( homePage, homePageCmds, homePageOutMsg ) =
+                                        let
+                                            defaultConfig =
+                                                HomePage.defaultConfig
+                                        in
+                                            HomePage.init { defaultConfig | title = pageTitle }
+                                in
+                                    ( { model
+                                        | title = pageTitle
+                                        , contentType = "home"
+                                        , pageDriverModel = HomePage homePage
+                                      }
+                                    , Cmd.map HomePageMsg homePageCmds
+                                    , AlertOutMsg
+                                        AlertLevel.InfoLevel
+                                        "PageInfoFetchSucceed: contentType = home"
+                                    )
+
+                            "blog" ->
+                                let
+                                    ( blogPage, blogPageCmds, blogPageOutMsg ) =
+                                        let
+                                            defaultConfig =
+                                                BlogPage.defaultConfig
+                                        in
+                                            BlogPage.init { defaultConfig | title = pageTitle }
+                                in
+                                    ( { model
+                                        | title = pageTitle
+                                        , contentType = "blog"
+                                        , pageDriverModel = BlogPage blogPage
+                                      }
+                                    , Cmd.map BlogPageMsg blogPageCmds
+                                    , AlertOutMsg
+                                        AlertLevel.InfoLevel
+                                        "PageInfoFetchSucceed: contentType = blog"
+                                    )
+
+                            unknownType ->
+                                let
+                                    ( inPlaceAlertPage, inPlaceAlertPageCmds ) =
+                                        InPlaceAlertPage.init
+                                            AlertLevel.WarningLevel
+                                            ("Unknown type of page: " ++ unknownType)
+                                in
+                                    ( { model
+                                        | title = pageTitle
+                                        , pageDriverModel = InPlaceAlertPage inPlaceAlertPage
+                                      }
+                                    , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
+                                    , AlertOutMsg
+                                        AlertLevel.WarningLevel
+                                        ("Page info fetch succeed, but unknown content type: "
+                                            ++ unknownType
+                                        )
+                                    )
+
+                    Err info ->
+                        let
+                            ( inPlaceAlertPage, inPlaceAlertPageCmds ) =
+                                InPlaceAlertPage.init AlertLevel.DangerLevel info
+                        in
+                            ( { model | pageDriverModel = InPlaceAlertPage inPlaceAlertPage }
+                            , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
+                            , AlertOutMsg
+                                AlertLevel.DangerLevel
+                                ("Page info fetch succeed, but parsed fail: " ++ info)
+                            )
 
         PageInfoFetchFail location (Http.NetworkError) ->
             ( { model
@@ -304,18 +284,6 @@ update msg model =
             , NoneOutMsg
             )
 
-        PageContentFetchSucceed pageContent ->
-            ( { model | content = article [] [ Markdown.toHtml [] pageContent ] }
-            , Cmd.none
-            , NoneOutMsg
-            )
-
-        PageContentFetchFail error ->
-            ( { model | content = div [] [ text "The content of the page was not loaded." ] }
-            , Cmd.none
-            , NoneOutMsg
-            )
-
         ButtonPageInfoRefresh location ->
             ( model
             , Task.attempt
@@ -376,6 +344,21 @@ update msg model =
                 _ ->
                     ( model, Cmd.none, NoneOutMsg )
 
+        SimplePageMsg simplePageMsg ->
+            case model.pageDriverModel of
+                SimplePage page ->
+                    let
+                        ( updatedPage, pageCmds ) =
+                            SimplePage.update simplePageMsg page
+                    in
+                        ( { model | pageDriverModel = SimplePage updatedPage }
+                        , Cmd.map SimplePageMsg pageCmds
+                        , NoneOutMsg
+                        )
+
+                _ ->
+                    ( model, Cmd.none, NoneOutMsg )
+
         _ ->
             ( model, Cmd.none, NoneOutMsg )
 
@@ -406,3 +389,9 @@ view model =
                 Html.map
                 BlogPageMsg
                 (BlogPage.view page)
+
+        SimplePage page ->
+            Debug.log "SimplePage"
+                Html.map
+                SimplePageMsg
+                (SimplePage.view page)
