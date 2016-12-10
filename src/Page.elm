@@ -27,7 +27,8 @@ import Blog.BlogPage as BlogPage
 import Page.EmptyPlacePage as EmptyPlacePage
 import Page.HomePage as HomePage
 import Page.InPlaceAlertPage as InPlaceAlertPage
-import Page.SimplePage as SimplePage
+import Page.HtmlPage as HtmlPage
+import Page.MarkdownPage as MarkdownPage
 import Utils
 
 
@@ -50,7 +51,8 @@ type Driver
     | EmptyPlacePage EmptyPlacePage.Model
     | InPlaceAlertPage InPlaceAlertPage.Model
     | BlogPage BlogPage.Model
-    | SimplePage SimplePage.Model
+    | HtmlPage HtmlPage.Model
+    | MarkdownPage MarkdownPage.Model
 
 
 type Msg
@@ -64,7 +66,8 @@ type Msg
     | EmptyPlacePageMsg EmptyPlacePage.Msg
     | InPlaceAlertPageMsg InPlaceAlertPage.Msg
     | BlogPageMsg BlogPage.Msg
-    | SimplePageMsg SimplePage.Msg
+    | HtmlPageMsg HtmlPage.Msg
+    | MarkdownPageMsg MarkdownPage.Msg
 
 
 type OutMsg
@@ -120,14 +123,14 @@ update msg model =
                             "markdown" ->
                                 let
                                     ( page, pageCmds ) =
-                                        SimplePage.init model.location
+                                        MarkdownPage.init model.location
                                 in
                                     ( { model
                                         | title = pageTitle
                                         , contentType = "markdown"
-                                        , pageDriverModel = SimplePage page
+                                        , pageDriverModel = MarkdownPage page
                                       }
-                                    , Cmd.map SimplePageMsg pageCmds
+                                    , Cmd.map MarkdownPageMsg pageCmds
                                     , AlertOutMsg
                                         AlertLevel.InfoLevel
                                         "PageInfoFetchSucceed: contentType = markdown"
@@ -136,14 +139,14 @@ update msg model =
                             "html" ->
                                 let
                                     ( page, pageCmds ) =
-                                        SimplePage.init model.location
+                                        HtmlPage.init model.location
                                 in
                                     ( { model
                                         | title = pageTitle
                                         , contentType = "html"
-                                        , pageDriverModel = SimplePage page
+                                        , pageDriverModel = HtmlPage page
                                       }
-                                    , Cmd.map SimplePageMsg pageCmds
+                                    , Cmd.map HtmlPageMsg pageCmds
                                     , AlertOutMsg
                                         AlertLevel.InfoLevel
                                         "PageInfoFetchSucceed: contentType = html"
@@ -344,15 +347,30 @@ update msg model =
                 _ ->
                     ( model, Cmd.none, NoneOutMsg )
 
-        SimplePageMsg simplePageMsg ->
+        HtmlPageMsg htmlPageMsg ->
             case model.pageDriverModel of
-                SimplePage page ->
+                HtmlPage page ->
                     let
                         ( updatedPage, pageCmds ) =
-                            SimplePage.update simplePageMsg page
+                            HtmlPage.update htmlPageMsg page
                     in
-                        ( { model | pageDriverModel = SimplePage updatedPage }
-                        , Cmd.map SimplePageMsg pageCmds
+                        ( { model | pageDriverModel = HtmlPage updatedPage }
+                        , Cmd.map HtmlPageMsg pageCmds
+                        , NoneOutMsg
+                        )
+
+                _ ->
+                    ( model, Cmd.none, NoneOutMsg )
+
+        MarkdownPageMsg markdownPageMsg ->
+            case model.pageDriverModel of
+                MarkdownPage page ->
+                    let
+                        ( updatedPage, pageCmds ) =
+                            MarkdownPage.update markdownPageMsg page
+                    in
+                        ( { model | pageDriverModel = MarkdownPage updatedPage }
+                        , Cmd.map MarkdownPageMsg pageCmds
                         , NoneOutMsg
                         )
 
@@ -390,8 +408,14 @@ view model =
                 BlogPageMsg
                 (BlogPage.view page)
 
-        SimplePage page ->
-            Debug.log "SimplePage"
+        HtmlPage page ->
+            Debug.log "HtmlPage"
                 Html.map
-                SimplePageMsg
-                (SimplePage.view page)
+                HtmlPageMsg
+                (HtmlPage.view page)
+
+        MarkdownPage page ->
+            Debug.log "MarkdownPage"
+                Html.map
+                MarkdownPageMsg
+                (MarkdownPage.view page)

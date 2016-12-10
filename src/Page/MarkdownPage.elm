@@ -1,4 +1,4 @@
-module Page.SimplePage exposing (Model, Msg, init, update, view)
+module Page.MarkdownPage exposing (Model, Msg, init, update, view)
 
 import Html
 import Http
@@ -66,24 +66,6 @@ update msg model =
                                     Http.getString <|
                                         (Utils.pagePath model.location)
                                             ++ "/index.markdown"
-                                )
-                            )
-
-                        "html" ->
-                            ( model
-                            , Task.attempt
-                                (\result ->
-                                    case result of
-                                        Ok content ->
-                                            PageContentFetchSucceed content
-
-                                        Err error ->
-                                            PageContentFetchFail error
-                                )
-                                (Http.toTask <|
-                                    Http.getString <|
-                                        (Utils.pagePath model.location)
-                                            ++ "/index.html"
                                 )
                             )
 
