@@ -1,3 +1,8 @@
-# Post 1
+# Hello World with Elm
 
-Post content.
+``` elm
+import Html exposing (text)
+
+main =
+  text "Hello, World!"
+```

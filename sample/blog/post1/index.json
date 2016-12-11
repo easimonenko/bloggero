@@ -1,4 +1,7 @@
 {
   "title": "Post 1",
-  "type": "markdown"
+  "type": "markdown",
+  "markdown": {
+    "highlight": true
+  }
 }
