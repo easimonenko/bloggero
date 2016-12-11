@@ -1,5 +1,11 @@
 # Bloggero ChangeLog
 
+## 2016-12-12, Version 0.2.3
+
+* SimplePage splitted into MarkdownPage and HtmlPage.
+* :new: Add support for highlight of source code.
+* Added initial support for page options (html and markdown).
+
 ## 2016-12-10, Version 0.2.2
 
 * Improved displaying of home page with list of posts.
