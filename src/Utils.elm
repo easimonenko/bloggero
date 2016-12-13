@@ -1,5 +1,6 @@
-module Utils exposing (pagePath, tuple2triple)
+module Utils exposing (pagePath, toHumanReadable, tuple2triple)
 
+import Http
 import Navigation
 import Tuple
 
@@ -7,6 +8,26 @@ import Tuple
 pagePath : Navigation.Location -> String
 pagePath location =
     String.dropLeft 2 location.hash
+
+
+toHumanReadable : Http.Error -> String
+toHumanReadable error =
+    "HTTP request error "
+        ++ case error of
+            Http.BadUrl info ->
+                "<BadUrl> " ++ info
+
+            Http.Timeout ->
+                "<Timeout>"
+
+            Http.NetworkError ->
+                "<NetworkError>"
+
+            Http.BadStatus response ->
+                "<BadStatus> " ++ "[" ++ (response.status.code |> toString) ++ "] " ++ response.status.message
+
+            Http.BadPayload info _ ->
+                "<BadPayload> " ++ info
 
 
 tuple2triple : ( a, b ) -> c -> ( a, b, c )

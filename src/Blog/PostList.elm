@@ -1,5 +1,6 @@
 module Blog.PostList exposing (Model, Msg, OutMsg(..), init, update, view, defaultConfig)
 
+import Dict exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -19,23 +20,26 @@ import Material.List as MdlList
 
 import Alert.AlertLevel as AlertLevel
 import Alert.InPlaceAlert as InPlaceAlert
+import Link
 
 
 type alias Model =
-    { mdl : Material.Model
-    , root : String
+    { --mdl : Material.Model
+      --, root : String
+      root : String
     , title : String
-    , postList : List String
+    , postIds : List String
+    , postListLinks : Dict String Link.Model
     , inPlaceAlert : Maybe InPlaceAlert.Model
-    , alertInfo : String
-    , alertLevel : AlertLevel.Level
     }
 
 
 type Msg
-    = Mdl (Material.Msg Msg)
-    | BlogConfigFetchFail Http.Error
+    = --Mdl (Material.Msg Msg)
+      -- | BlogConfigFetchFail Http.Error
+      BlogConfigFetchFail Http.Error
     | BlogConfigFetchSucceed String
+    | LinkMsg String Link.Msg
     | InPlaceAlertMsg InPlaceAlert.Msg
 
 
@@ -52,13 +56,13 @@ type alias PostListConfig =
 
 init : PostListConfig -> ( Model, Cmd Msg, OutMsg )
 init config =
-    ( { mdl = Material.model
-      , root = config.root
+    ( { --mdl = Material.model
+        --, root = config.root
+        root = config.root
       , title = config.title
-      , postList = []
+      , postIds = []
+      , postListLinks = Dict.empty
       , inPlaceAlert = Nothing
-      , alertInfo = ""
-      , alertLevel = AlertLevel.NoneLevel
       }
     , Task.attempt
         (\result ->
@@ -89,9 +93,8 @@ tuple2triple t v =
 update : Msg -> Model -> ( Model, Cmd Msg, OutMsg )
 update msg model =
     case msg of
-        Mdl mdlMsg ->
-            tuple2triple (Material.update mdlMsg model) NoneOutMsg
-
+        --Mdl mdlMsg ->
+        --    tuple2triple (Material.update mdlMsg model) NoneOutMsg
         BlogConfigFetchSucceed config ->
             let
                 configDecoder =
@@ -104,8 +107,27 @@ update msg model =
                     decodeString configDecoder config
             in
                 case configDecodeResult of
-                    Ok postList ->
-                        ( { model | postList = postList }, Cmd.none, NoneOutMsg )
+                    Ok postIds ->
+                        let
+                            ( links, linkCmds ) =
+                                List.unzip <|
+                                    List.map
+                                        (\postId ->
+                                            let
+                                                ( link, linkCmds ) =
+                                                    Link.init <| model.root ++ "/" ++ postId
+                                            in
+                                                ( ( postId, link ), ( postId, linkCmds ) )
+                                        )
+                                        postIds
+                        in
+                            ( { model | postIds = postIds, postListLinks = Dict.fromList links }
+                            , Cmd.batch <|
+                                List.map
+                                    (\( postId, linkCmds ) -> Cmd.map (LinkMsg postId) linkCmds)
+                                    linkCmds
+                            , NoneOutMsg
+                            )
 
                     Err info ->
                         let
@@ -127,6 +149,33 @@ update msg model =
                 , AlertOutMsg AlertLevel.DangerLevel "Http Error"
                 )
 
+        LinkMsg postId linkMsg ->
+            case Dict.get postId model.postListLinks of
+                Just link ->
+                    let
+                        ( linkUpdated, linkCmds ) =
+                            Link.update linkMsg link
+                    in
+                        ( { model
+                            | postListLinks =
+                                Dict.update postId
+                                    (\item ->
+                                        case item of
+                                            Just _ ->
+                                                Just linkUpdated
+
+                                            Nothing ->
+                                                Nothing
+                                    )
+                                    model.postListLinks
+                          }
+                        , Cmd.map (LinkMsg postId) linkCmds
+                        , NoneOutMsg
+                        )
+
+                Nothing ->
+                    ( model, Cmd.none, NoneOutMsg )
+
         _ ->
             ( model, Cmd.none, NoneOutMsg )
 
@@ -138,15 +187,19 @@ view model =
             div []
                 [ h2 []
                     [ text model.title ]
-                , MdlList.ul
-                    []
-                  <|
+                , MdlList.ul [] <|
                     List.map
                         (\postId ->
                             MdlList.li []
-                                [ a [ href <| "/#!" ++ model.root ++ "/" ++ postId ] [ text postId ] ]
+                                [ case Dict.get postId model.postListLinks of
+                                    Just link ->
+                                        Html.map (LinkMsg postId) (Link.view link)
+
+                                    Nothing ->
+                                        text ""
+                                ]
                         )
-                        model.postList
+                        model.postIds
                 ]
 
         Just inPlaceAlert ->
