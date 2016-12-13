@@ -1,6 +1,6 @@
 {
   "name": "bloggero-elm-mdl",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Bloggero -- engine for static blogs with single page interface written in Elm with Material Design Light.",
   "main": "app.js",
   "scripts": {

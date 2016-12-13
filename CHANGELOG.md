@@ -1,5 +1,10 @@
 # Bloggero ChangeLog
 
+## 2016-12-14, Version 0.2.4
+
+* :new: Added component for links to pages.
+* :new: Added links to the sections in footer.
+
 ## 2016-12-12, Version 0.2.3
 
 * SimplePage splitted into MarkdownPage and HtmlPage.
