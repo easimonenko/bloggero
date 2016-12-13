@@ -7,7 +7,7 @@ import Http
 import Json.Decode exposing (field, decodeString, list, maybe, map5, string)
 import Json.Encode
 import List exposing (filter, head, map, member, tail)
-import List.Extra exposing (find)
+import List.Extra
 import Maybe exposing (withDefault)
 import Navigation
 import String exposing (split)
@@ -185,7 +185,7 @@ update msg model =
                         Page.init location
 
                     section =
-                        find
+                        List.Extra.find
                             (\item ->
                                 item.route
                                     == "/"
@@ -231,7 +231,10 @@ update msg model =
                                 "[NetworkError]."
 
                             Http.BadStatus response ->
-                                "[BadStatus]: " ++ (toString response.status.code) ++ " - " ++ response.status.message
+                                "[BadStatus]: "
+                                    ++ (toString response.status.code)
+                                    ++ " - "
+                                    ++ response.status.message
 
                             Http.BadPayload info response ->
                                 "[BadPayload]: " ++ info
@@ -401,7 +404,9 @@ update msg model =
                             Nothing ->
                                 let
                                     ( alertList2, alertListCmds2 ) =
-                                        AlertList.add alertList AlertLevel.DangerLevel "WTF: page is Nothing!"
+                                        AlertList.add alertList
+                                            AlertLevel.DangerLevel
+                                            "WTF: page is Nothing!"
                                 in
                                     ( { model | alertList = alertList2 }
                                     , Cmd.batch
@@ -438,7 +443,9 @@ update msg model =
                         Nothing ->
                             let
                                 ( alertList, alertListCmds ) =
-                                    AlertList.add model.alertList AlertLevel.DangerLevel "WTF: page is Nothing!"
+                                    AlertList.add model.alertList
+                                        AlertLevel.DangerLevel
+                                        "WTF: page is Nothing!"
                             in
                                 ( { model | alertList = alertList }
                                 , Cmd.map AlertListMsg alertListCmds
@@ -487,14 +494,13 @@ headerView model =
                                 Just sectionId ->
                                     [ text model.config.title
                                     , span [ innerHtml "&nbsp;::&nbsp;" ] []
-                                    , text
-                                        (case find (\item -> item.id == sectionId) model.config.sections of
+                                    , text <|
+                                        case List.Extra.find (\item -> item.id == sectionId) model.config.sections of
                                             Just section ->
                                                 section.title
 
                                             Nothing ->
                                                 ""
-                                        )
                                     ]
 
                                 Nothing ->
@@ -512,21 +518,20 @@ headerView model =
             ]
         , div [ class "mdl-layout--small-screen-only" ]
             [ Layout.row []
-                [ Layout.title []
-                    (case model.isConfigLoaded of
+                [ Layout.title [] <|
+                    case model.isConfigLoaded of
                         Just True ->
                             case model.sectionId of
                                 Just sectionId ->
                                     [ text model.config.title
                                     , span [ innerHtml "&nbsp;::&nbsp;" ] []
-                                    , text
-                                        (case find (\item -> item.id == sectionId) model.config.sections of
+                                    , text <|
+                                        case List.Extra.find (\item -> item.id == sectionId) model.config.sections of
                                             Just section ->
                                                 section.title
 
                                             Nothing ->
                                                 ""
-                                        )
                                     ]
 
                                 Nothing ->
@@ -534,7 +539,6 @@ headerView model =
 
                         _ ->
                             [ text "" ]
-                    )
                 ]
             ]
         ]
@@ -563,14 +567,13 @@ drawerView model =
                             span []
                                 [ text model.config.title
                                 , span [ innerHtml "&nbsp;::&nbsp;" ] []
-                                , text
-                                    (case find (\item -> item.id == sectionId) model.config.sections of
+                                , text <|
+                                    case List.Extra.find (\item -> item.id == sectionId) model.config.sections of
                                         Just section ->
                                             section.title
 
                                         Nothing ->
                                             ""
-                                    )
                                 ]
 
                         Nothing ->
@@ -635,6 +638,18 @@ mainView model =
                 [ Footer.logo []
                     [ Footer.html <| span [ innerHtml "&copy; 2016" ] []
                     ]
+                , Footer.links [] <|
+                    List.map
+                        (\item ->
+                            case List.Extra.find (\item -> item == FooterPlacement) item.placement of
+                                Just _ ->
+                                    Footer.linkItem [ Footer.href <| "/#!" ++ item.route ]
+                                        [ Footer.html <| text item.title ]
+
+                                Nothing ->
+                                    Footer.html <| text ""
+                        )
+                        model.config.sections
                 ]
         , right =
             Footer.right []
