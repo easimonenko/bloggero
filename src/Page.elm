@@ -119,7 +119,7 @@ update msg model =
                 pageInfoDecoder =
                     decode PageInfo
                         |> required "title" string
-                        |> optional "type" string "markdown"
+                        |> optional "driver" string "markdown"
             in
                 case decodeString pageInfoDecoder pageInfoJson of
                     Ok pageInfo ->
@@ -319,6 +319,21 @@ update msg model =
                     in
                         ( { model | driverModel = BlogPage blogPageNext }
                         , Cmd.map BlogPageMsg blogPageCmds
+                        , NoneOutMsg
+                        )
+
+                _ ->
+                    ( model, Cmd.none, NoneOutMsg )
+
+        PostPageMsg postPageMsg ->
+            case model.driverModel of
+                PostPage page ->
+                    let
+                        ( pageUpdated, cmds ) =
+                            PostPage.update postPageMsg page
+                    in
+                        ( { model | driverModel = PostPage pageUpdated }
+                        , Cmd.map PostPageMsg cmds
                         , NoneOutMsg
                         )
 

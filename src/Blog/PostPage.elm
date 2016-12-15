@@ -1,11 +1,13 @@
 module Blog.PostPage exposing (Model, Msg, init, update, view)
 
+import Date
 import Html
 import Http
 import Json.Decode exposing (..)
 import Json.Decode.Pipeline exposing (..)
 import Markdown
 import Navigation
+import String.Extra
 import Task
 
 
@@ -18,14 +20,19 @@ import Utils
 
 type alias Model =
     { location : Navigation.Location
-    , options : Options
-    , content : String
+    , rawContent : String
+    , rawContentType : String
+    , post : Post
     , inPlaceAlert : Maybe InPlaceAlert.Model
     }
 
 
-type alias Options =
-    { highlight : Bool }
+type alias Post =
+    { author :
+        String
+        --, abstract : String
+        --, date : Date.Date
+    }
 
 
 type Msg
@@ -36,16 +43,18 @@ type Msg
     | InPlaceAlertMsg InPlaceAlert.Msg
 
 
-defaultOptions : Options
-defaultOptions =
-    { highlight = False }
+defaultPost : Post
+defaultPost =
+    { author = ""
+    }
 
 
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
     ( { location = location
-      , options = defaultOptions
-      , content = ""
+      , rawContent = ""
+      , rawContentType = "markdown"
+      , post = defaultPost
       , inPlaceAlert = Nothing
       }
     , Task.attempt
@@ -64,17 +73,20 @@ init location =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        PageInfoFetchSucceed pageInfo ->
+        PageInfoFetchSucceed pageInfoJson ->
             let
-                optionsDecoder =
+                postDecoder =
                     decode identity
-                        |> optional "markdown"
-                            (decode Options |> optional "highlight" bool False)
-                            defaultOptions
+                        |> optional "post"
+                            (decode Post
+                                |> optional "author" string ""
+                             -- |> optional "abstract" string ""
+                            )
+                            defaultPost
             in
-                case decodeString optionsDecoder pageInfo of
-                    Ok options ->
-                        ( { model | options = options }
+                case decodeString postDecoder pageInfoJson of
+                    Ok post ->
+                        ( { model | post = post }
                         , Task.attempt
                             (\result ->
                                 case result of
@@ -101,7 +113,7 @@ update msg model =
                             )
 
         PageContentFetchSucceed pageContent ->
-            ( { model | content = pageContent }, Cmd.none )
+            ( { model | rawContent = pageContent }, Cmd.none )
 
         InPlaceAlertMsg inPlaceAlertMsg ->
             case model.inPlaceAlert of
@@ -123,12 +135,29 @@ update msg model =
 
 view : Model -> Html.Html Msg
 view model =
-    Html.article []
-        [ case model.inPlaceAlert of
-            Just inPlaceAlert ->
-                Html.map InPlaceAlertMsg <| InPlaceAlert.view inPlaceAlert
+    let
+        title =
+            String.dropLeft 2 <| String.Extra.leftOf "\n\n" model.rawContent
 
-            Nothing ->
-                Html.text ""
-        , Markdown.toHtml [] model.content
-        ]
+        body =
+            String.dropLeft (String.length title + 2) model.rawContent
+    in
+        Html.article []
+            [ Html.header []
+                [ case model.inPlaceAlert of
+                    Just inPlaceAlert ->
+                        Html.map InPlaceAlertMsg <| InPlaceAlert.view inPlaceAlert
+
+                    Nothing ->
+                        Html.text ""
+                , Html.h1 [] [ Html.text title ]
+                , Html.p []
+                    [ Html.text <|
+                        if not (String.isEmpty model.post.author) then
+                            "Author: " ++ model.post.author
+                        else
+                            ""
+                    ]
+                ]
+            , Markdown.toHtml [] body
+            ]
