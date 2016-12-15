@@ -363,7 +363,7 @@ update msg model =
         {--TODO: replace on OutMsg --}
         PageMsg pageMsg ->
             case pageMsg of
-                Page.PageInfoFetchFail pageUrl httpError ->
+                Page.PageInfoFetchFail httpError ->
                     let
                         message =
                             case httpError of
