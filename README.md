@@ -91,6 +91,27 @@ what is in the directory `sample` is a example template. For your blog, copy
 those files to a new directory, and then edit the `package.json` to point to
 your new directory.
 
+## Alternative usage with Gulp
+
+If You want to see for sample a blog, run:
+
+``` sh
+gulp
+```
+
+This sets by default options:
+
+* --output sample/app.js
+* --dir sample
+
+Full command:
+
+``` sh
+gulp --output=the_path_to_your_blog/app.js --dir=the_path_to_your_blog
+```
+
+Use --debug option for enable debug history. By default false.
+
 ## Technologies
 
 The project is written in Elm version 0.18 using the elm-mdl (currently by
