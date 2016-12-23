@@ -11,23 +11,28 @@ commander
   .option('--debug', '--debug option to elm-make')
   .parse(process.argv)
 
-gutil.log('output = ' + commander.output)
-gutil.log('dir = ' + commander.dir)
-gutil.log('debug = ' + (commander.debug || false))
+const
+  output = commander.output,
+  dir = commander.dir,
+  debug = commander.debug || false
+
+gutil.log('output = ' + output)
+gutil.log('dir = ' + dir)
+gutil.log('debug = ' + debug)
 
 gulp.task('elm-init', elm.init)
 
 gulp.task('build', ['elm-init'], () => {
   return gulp.src('src/**/*.elm')
     .pipe(plumber())
-    .pipe(elm.bundle(commander.output, {debug: commander.debug || false}))
+    .pipe(elm.bundle(output, {debug: debug}))
     .pipe(gulp.dest('.'))
 })
 
 gulp.task('server', [], () => {
   connect.server({
     port: 8000,
-    root: commander.dir,
+    root: dir,
     livereload: true,
     debug: true
   })
@@ -37,13 +42,13 @@ gulp.task('watch', [], () => {
   gulp.watch('src/**/*.elm', ['build'])
 
   const watchlist = [
-    '/app.js',
     '/index.html',
     '/css/**/*.css',
     '/config.json'
   ].map((path) => {
-    return commander.dir + path
+    return dir + path
   })
+  watchlist.unshift(output)
 
   gulp.watch(watchlist, (event) => {
     gutil.log('LiveReload ' + event.path)
