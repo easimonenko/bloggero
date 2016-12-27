@@ -1,7 +1,8 @@
-module Utils exposing (pagePath, toHumanReadable, tuple2triple)
+module Utils exposing (pagePath, toHumanReadable, tuple2triple, stringToMaybe)
 
 import Http
 import Navigation
+import String
 import Tuple
 
 
@@ -24,7 +25,11 @@ toHumanReadable error =
                 "<NetworkError>"
 
             Http.BadStatus response ->
-                "<BadStatus> " ++ "[" ++ (response.status.code |> toString) ++ "] " ++ response.status.message
+                "<BadStatus> "
+                    ++ "["
+                    ++ (response.status.code |> toString)
+                    ++ "] "
+                    ++ response.status.message
 
             Http.BadPayload info _ ->
                 "<BadPayload> " ++ info
@@ -33,3 +38,11 @@ toHumanReadable error =
 tuple2triple : ( a, b ) -> c -> ( a, b, c )
 tuple2triple t v =
     ( Tuple.first t, Tuple.second t, v )
+
+
+stringToMaybe : String -> Maybe String
+stringToMaybe str =
+    if String.isEmpty str then
+        Nothing
+    else
+        Just str
