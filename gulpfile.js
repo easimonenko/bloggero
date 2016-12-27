@@ -1,7 +1,8 @@
-const gulp = require('gulp'),
+const
   commander = require('commander'),
   connect = require('gulp-connect'),
   elm = require('gulp-elm'),
+  gulp = require('gulp'),
   gutil = require('gulp-util'),
   plumber = require('gulp-plumber')
 
@@ -44,7 +45,10 @@ gulp.task('watch', [], () => {
   const watchlist = [
     '/index.html',
     '/css/**/*.css',
-    '/config.json'
+    '/config.json',
+    '/**/*.json',
+    '/**/*.markdown',
+    '/**/*.html'
   ].map((path) => {
     return dir + path
   })
@@ -60,3 +64,7 @@ gulp.task('watch', [], () => {
 })
 
 gulp.task('default', ['watch', 'server'])
+
+gulp.on('error', (error) => {
+  gutil.log(error)
+})
