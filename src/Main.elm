@@ -6,11 +6,11 @@ import Html.Attributes.Extra exposing (innerHtml)
 import Http
 import Json.Decode exposing (field, decodeString, list, maybe, map5, string)
 import Json.Encode
-import List exposing (filter, head, map, member, tail)
+import List
 import List.Extra
-import Maybe exposing (withDefault)
+import Maybe
 import Navigation
-import String exposing (split)
+import String
 import Task
 
 
@@ -39,13 +39,15 @@ type alias Model =
     , alertList : AlertList.Model
     , page : Maybe Page.Model
     , snackbar : Snackbar.Model ()
-    , config :
-        { title : String
-        , mode : Mode
-        , sections : List SectionItem
-        }
-    , isConfigLoaded : Maybe Bool
+    , config : Maybe Config
     , sectionId : Maybe String
+    }
+
+
+type alias Config =
+    { title : String
+    , mode : Mode
+    , sections : List SectionItem
     }
 
 
@@ -118,12 +120,7 @@ init location =
             , snackbar = Snackbar.model
             , alertList = alertList
             , page = Nothing
-            , config =
-                { title = ""
-                , mode = DevelopmentMode
-                , sections = []
-                }
-            , isConfigLoaded = Nothing
+            , config = Nothing
             , sectionId = Nothing
             }
 
@@ -184,15 +181,35 @@ update msg model =
                     ( page, pageFx, outMsg ) =
                         Page.init location
 
+                    sectionRoute =
+                        "/"
+                            ++ (Maybe.withDefault "" <|
+                                    List.head <|
+                                        Maybe.withDefault [] <|
+                                            List.tail (String.split "/" location.hash)
+                               )
+
                     section =
-                        List.Extra.find
-                            (\item ->
-                                item.route
-                                    == "/"
-                                    ++ withDefault ""
-                                        (head <| withDefault [] (tail (split "/" location.hash)))
-                            )
-                            model.config.sections
+                        Maybe.withDefault Nothing <|
+                            flip Maybe.map
+                                model.config
+                                (\config ->
+                                    flip List.Extra.find
+                                        config.sections
+                                        (\item -> item.route == sectionRoute)
+                                )
+
+                    blogTitle =
+                        Maybe.withDefault "" <|
+                            Maybe.map .title model.config
+
+                    sectionTitle =
+                        Maybe.withDefault "" <|
+                            flip Maybe.map
+                                section
+                                (\s ->
+                                    " - " ++ s.title
+                                )
                 in
                     ( { model
                         | location = location
@@ -200,14 +217,7 @@ update msg model =
                         , sectionId = Maybe.map .id section
                       }
                     , Cmd.batch
-                        [ title <|
-                            model.config.title
-                                ++ case section of
-                                    Just s ->
-                                        " - " ++ s.title
-
-                                    Nothing ->
-                                        ""
+                        [ title <| blogTitle ++ sectionTitle
                         , Cmd.map PageMsg pageFx
                         , if model.mdl.layout.isDrawerOpen then
                             Task.perform identity (Task.succeed HideDrawer)
@@ -242,7 +252,7 @@ update msg model =
                 ( alertList, alertListCmds ) =
                     AlertList.add model.alertList AlertLevel.DangerLevel message
             in
-                ( { model | alertList = alertList, isConfigLoaded = Just False }
+                ( { model | alertList = alertList }
                 , Cmd.batch
                     [ Cmd.map AlertListMsg alertListCmds
                     ]
@@ -320,16 +330,11 @@ update msg model =
                             ( { model
                                 | alertList = alertList
                                 , config =
-                                    let
-                                        modelConfig =
-                                            model.config
-                                    in
-                                        { modelConfig
-                                            | title = blogTitle
-                                            , mode = blogMode
-                                            , sections = blogSections
+                                    Just
+                                        { title = blogTitle
+                                        , mode = blogMode
+                                        , sections = blogSections
                                         }
-                                , isConfigLoaded = Just True
                               }
                             , Cmd.batch
                                 [ title blogTitle
@@ -346,10 +351,7 @@ update msg model =
                             ( alertList, alertListCmds ) =
                                 AlertList.add model.alertList AlertLevel.DangerLevel message
                         in
-                            ( { model
-                                | alertList = alertList
-                                , isConfigLoaded = Just False
-                              }
+                            ( { model | alertList = alertList }
                             , Cmd.map AlertListMsg alertListCmds
                             )
 
@@ -484,61 +486,52 @@ headerView model =
                   )
                 , text item.title
                 ]
+
+        headerTitle =
+            Layout.title [] <|
+                Maybe.withDefault [ Html.text "" ] <|
+                    flip Maybe.map
+                        model.sectionId
+                        (\sectionId ->
+                            Maybe.withDefault [ Html.text "" ] <|
+                                flip Maybe.map
+                                    model.config
+                                    (\config ->
+                                        [ text config.title
+                                        , span [ innerHtml "&nbsp;::&nbsp;" ] []
+                                        , Html.text <|
+                                            Maybe.withDefault "" <|
+                                                flip Maybe.map
+                                                    (List.Extra.find
+                                                        (\item -> item.id == sectionId)
+                                                        config.sections
+                                                    )
+                                                    (\section ->
+                                                        section.title
+                                                    )
+                                        ]
+                                    )
+                        )
     in
         [ div [ class "mdl-layout--large-screen-only" ]
             [ Layout.row []
-                [ Layout.title []
-                    (case model.isConfigLoaded of
-                        Just True ->
-                            case model.sectionId of
-                                Just sectionId ->
-                                    [ text model.config.title
-                                    , span [ innerHtml "&nbsp;::&nbsp;" ] []
-                                    , text <|
-                                        case List.Extra.find (\item -> item.id == sectionId) model.config.sections of
-                                            Just section ->
-                                                section.title
-
-                                            Nothing ->
-                                                ""
-                                    ]
-
-                                Nothing ->
-                                    [ text "" ]
-
-                        _ ->
-                            [ text "" ]
-                    )
+                [ headerTitle
                 , Layout.spacer
-                , Layout.navigation []
-                    (List.map makeLink <|
-                        filter (\item -> member HeaderPlacement item.placement) model.config.sections
-                    )
+                , Layout.navigation [] <|
+                    List.map makeLink <|
+                        Maybe.withDefault [] <|
+                            flip Maybe.map
+                                model.config
+                                (\config ->
+                                    List.filter
+                                        (\item -> List.member HeaderPlacement item.placement)
+                                        config.sections
+                                )
                 ]
             ]
         , div [ class "mdl-layout--small-screen-only" ]
             [ Layout.row []
-                [ Layout.title [] <|
-                    case model.isConfigLoaded of
-                        Just True ->
-                            case model.sectionId of
-                                Just sectionId ->
-                                    [ text model.config.title
-                                    , span [ innerHtml "&nbsp;::&nbsp;" ] []
-                                    , text <|
-                                        case List.Extra.find (\item -> item.id == sectionId) model.config.sections of
-                                            Just section ->
-                                                section.title
-
-                                            Nothing ->
-                                                ""
-                                    ]
-
-                                Nothing ->
-                                    [ text "" ]
-
-                        _ ->
-                            [ text "" ]
+                [ headerTitle
                 ]
             ]
         ]
@@ -549,38 +542,32 @@ drawerView model =
     let
         makeLink item =
             Layout.link [ Layout.href ("/#!" ++ item.route) ]
-                [ (case item.icon of
-                    Just iconName ->
-                        Icon.i iconName
-
-                    Nothing ->
-                        span [] [ text "" ]
-                  )
+                [ Maybe.withDefault (span [] [ text "" ]) <|
+                    Maybe.map Icon.i item.icon
                 , text item.title
                 ]
     in
         [ Layout.title []
-            [ case model.isConfigLoaded of
-                Just True ->
-                    case model.sectionId of
-                        Just sectionId ->
-                            span []
-                                [ text model.config.title
-                                , span [ innerHtml "&nbsp;::&nbsp;" ] []
-                                , text <|
-                                    case List.Extra.find (\item -> item.id == sectionId) model.config.sections of
-                                        Just section ->
-                                            section.title
-
-                                        Nothing ->
-                                            ""
-                                ]
-
-                        Nothing ->
-                            text ""
-
-                _ ->
-                    text ""
+            [ Maybe.withDefault (text "") <|
+                flip Maybe.map
+                    model.config
+                    (\config ->
+                        Maybe.withDefault (text "") <|
+                            flip Maybe.map
+                                model.sectionId
+                                (\sectionId ->
+                                    span []
+                                        [ text config.title
+                                        , span [ innerHtml "&nbsp;::&nbsp;" ] []
+                                        , text <|
+                                            Maybe.withDefault "" <|
+                                                Maybe.map .title <|
+                                                    List.Extra.find
+                                                        (\item -> item.id == sectionId)
+                                                        config.sections
+                                        ]
+                                )
+                    )
             , Button.render Mdl
                 [ 0 ]
                 model.mdl
@@ -593,10 +580,16 @@ drawerView model =
                 ]
             ]
         , hr [] []
-        , Layout.navigation []
-            (List.map makeLink <|
-                filter (\item -> member DrawerPlacement item.placement) model.config.sections
-            )
+        , Layout.navigation [] <|
+            Maybe.withDefault [] <|
+                flip Maybe.map
+                    model.config
+                    (\config ->
+                        List.map makeLink <|
+                            List.filter
+                                (\item -> List.member DrawerPlacement item.placement)
+                                config.sections
+                    )
         ]
 
 
@@ -604,32 +597,23 @@ mainView : Model -> List (Html Msg)
 mainView model =
     [ Grid.grid []
         [ Grid.cell [ Grid.size All 8, Grid.offset Desktop 2, Elevation.e3 ]
-            [ case model.isConfigLoaded of
-                Just True ->
-                    case model.page of
-                        Just page ->
-                            Html.map
-                                PageMsg
-                                (Page.view page)
-
-                        Nothing ->
-                            text
-                                ""
-
-                Just False ->
-                    text ""
-
-                Nothing ->
-                    text ""
+            [ Maybe.withDefault (text "Page do'nt loaded.") <|
+                flip Maybe.map
+                    model.page
+                    (\page -> Html.map PageMsg (Page.view page))
             ]
-        , Grid.cell [ Grid.size All 2 ]
-            (case model.config.mode of
-                DevelopmentMode ->
-                    [ Html.map AlertListMsg (AlertList.view model.alertList) ]
+        , Grid.cell [ Grid.size All 2 ] <|
+            Maybe.withDefault [] <|
+                flip Maybe.map
+                    model.config
+                    (\config ->
+                        case config.mode of
+                            DevelopmentMode ->
+                                [ Html.map AlertListMsg (AlertList.view model.alertList) ]
 
-                _ ->
-                    []
-            )
+                            _ ->
+                                []
+                    )
         ]
     , Layout.spacer
     , Footer.mini []
@@ -639,17 +623,26 @@ mainView model =
                     [ Footer.html <| span [ innerHtml "&copy; 2016" ] []
                     ]
                 , Footer.links [] <|
-                    List.map
-                        (\item ->
-                            case List.Extra.find (\item -> item == FooterPlacement) item.placement of
-                                Just _ ->
-                                    Footer.linkItem [ Footer.href <| "/#!" ++ item.route ]
-                                        [ Footer.html <| text item.title ]
-
-                                Nothing ->
-                                    Footer.html <| text ""
-                        )
-                        model.config.sections
+                    Maybe.withDefault [] <|
+                        flip Maybe.map
+                            model.config
+                            (\config ->
+                                flip List.map
+                                    config.sections
+                                    (\item ->
+                                        Maybe.withDefault (Footer.html <| text "") <|
+                                            flip Maybe.map
+                                                (List.Extra.find
+                                                    (\item -> item == FooterPlacement)
+                                                    item.placement
+                                                )
+                                                (\_ ->
+                                                    Footer.linkItem
+                                                        [ Footer.href <| "/#!" ++ item.route ]
+                                                        [ Footer.html <| text item.title ]
+                                                )
+                                    )
+                            )
                 ]
         , right =
             Footer.right []
