@@ -1,0 +1,9 @@
+{
+  "title": "Hello World with Elm (with HTML)",
+  "driver": "post",
+  "post": {
+    "author": "Ivan I. Ivanov",
+    "abstract": "This post describes the Hello World example on the Elm.",
+    "date": "2016-12-22"
+  }
+}
