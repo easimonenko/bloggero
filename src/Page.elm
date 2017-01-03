@@ -1,13 +1,12 @@
 module Page exposing (Model, Msg(..), OutMsg(..), init, update, view)
 
 import Debug
-import Html exposing (..)
+import Html
 import Http
 import Json.Decode exposing (..)
 import Json.Decode.Pipeline exposing (..)
 import Navigation
 import Task
-import VirtualDom
 
 
 -- Material Design Lite modules
@@ -20,6 +19,7 @@ import Material
 import Alert.AlertLevel as AlertLevel
 import Blog.BlogPage as BlogPage
 import Blog.PostPage as PostPage
+import Page.Breadcrumbs as Breadcrumbs
 import Page.EmptyPlacePage as EmptyPlacePage
 import Page.HomePage as HomePage
 import Page.InPlaceAlertPage as InPlaceAlertPage
@@ -35,8 +35,8 @@ import Utils
 type alias Model =
     { mdl : Material.Model
     , location : Navigation.Location
-    , content : VirtualDom.Node Msg
     , pageInfo : Maybe PageInfo
+    , breadcrumbs : Breadcrumbs.Model
     , driverModel : Driver
     }
 
@@ -72,6 +72,7 @@ type Msg
     | MarkdownPageMsg MarkdownPage.Msg
     | BlogPageMsg BlogPage.Msg
     | PostPageMsg PostPage.Msg
+    | BreadcrumbsMsg Breadcrumbs.Msg
 
 
 type OutMsg
@@ -84,11 +85,17 @@ init location =
     let
         ( emptyPlacePage, emptyPlacePageCmds ) =
             EmptyPlacePage.init location
+
+        path =
+            Utils.pagePath location
+
+        ( breadcrumbs, breadcrumbsCmds ) =
+            Breadcrumbs.init path
     in
         ( { mdl = Material.model
           , location = location
-          , content = text ""
           , pageInfo = Nothing
+          , breadcrumbs = breadcrumbs
           , driverModel = EmptyPlacePage emptyPlacePage
           }
         , Cmd.batch
@@ -101,8 +108,9 @@ init location =
                         Ok msg ->
                             PageInfoFetchSucceed msg
                 )
-                (Http.toTask <| Http.getString <| (Utils.pagePath location) ++ "/index.json")
+                (Http.toTask <| Http.getString <| path ++ "/index.json")
             , Cmd.map EmptyPlacePageMsg emptyPlacePageCmds
+            , Cmd.map BreadcrumbsMsg breadcrumbsCmds
             ]
         , NoneOutMsg
         )
@@ -233,7 +241,10 @@ update msg model =
                                     AlertLevel.DangerLevel
                                     ((Utils.pagePath model.location) ++ ": " ++ info)
                         in
-                            ( { model | pageInfo = Nothing, driverModel = InPlaceAlertPage inPlaceAlertPage }
+                            ( { model
+                                | pageInfo = Nothing
+                                , driverModel = InPlaceAlertPage inPlaceAlertPage
+                              }
                             , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
                             , AlertOutMsg
                                 AlertLevel.DangerLevel
@@ -243,7 +254,9 @@ update msg model =
         PageInfoFetchFail (Http.NetworkError) ->
             let
                 ( page, cmds, outMsg ) =
-                    PageInfoRefreshPage.init "Network Error" "Network error: try refreshing the page later."
+                    PageInfoRefreshPage.init
+                        "Network Error"
+                        "Network error: try refreshing the page later."
             in
                 ( { model | driverModel = PageInfoRefreshPage page }
                 , Cmd.map PageInfoRefreshMsg cmds
@@ -253,7 +266,9 @@ update msg model =
         PageInfoFetchFail (Http.Timeout) ->
             let
                 ( page, cmds, outMsg ) =
-                    PageInfoRefreshPage.init "Http Timeout" "Http timeout: try refreshing the page later."
+                    PageInfoRefreshPage.init
+                        "Http Timeout"
+                        "Http timeout: try refreshing the page later."
             in
                 ( { model | driverModel = PageInfoRefreshPage page }
                 , Cmd.map PageInfoRefreshMsg cmds
@@ -279,7 +294,11 @@ update msg model =
                                                 Ok msg ->
                                                     PageInfoFetchSucceed msg
                                         )
-                                        (Http.toTask <| Http.getString <| (Utils.pagePath model.location) ++ "/index.json")
+                                        (Http.toTask <|
+                                            Http.getString <|
+                                                (Utils.pagePath model.location)
+                                                    ++ "/index.json"
+                                        )
 
                                 _ ->
                                     Cmd.none
@@ -294,6 +313,16 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none, NoneOutMsg )
+
+        BreadcrumbsMsg breadcrumbsMsg ->
+            let
+                ( breadcrumbs, breadcrumbsCmds ) =
+                    Breadcrumbs.update breadcrumbsMsg model.breadcrumbs
+            in
+                ( { model | breadcrumbs = breadcrumbs }
+                , Cmd.map BreadcrumbsMsg breadcrumbsCmds
+                , NoneOutMsg
+                )
 
         HomePageMsg homePageMsg ->
             case model.driverModel of
@@ -389,53 +418,56 @@ update msg model =
             ( model, Cmd.none, NoneOutMsg )
 
 
-view : Model -> Html Msg
+view : Model -> Html.Html Msg
 view model =
-    case model.driverModel of
-        HomePage page ->
-            Debug.log "HomePage"
-                Html.map
-                HomePageMsg
-                (HomePage.view page)
+    Html.div []
+        [ Html.map BreadcrumbsMsg (Breadcrumbs.view model.breadcrumbs)
+        , case model.driverModel of
+            HomePage page ->
+                Debug.log "HomePage"
+                    Html.map
+                    HomePageMsg
+                    (HomePage.view page)
 
-        EmptyPlacePage page ->
-            Debug.log "EmptyPlacePage"
-                Html.map
-                EmptyPlacePageMsg
-                (EmptyPlacePage.view page)
+            EmptyPlacePage page ->
+                Debug.log "EmptyPlacePage"
+                    Html.map
+                    EmptyPlacePageMsg
+                    (EmptyPlacePage.view page)
 
-        InPlaceAlertPage page ->
-            Debug.log "InPlaceAlertPage"
-                Html.map
-                InPlaceAlertPageMsg
-                (InPlaceAlertPage.view page)
+            InPlaceAlertPage page ->
+                Debug.log "InPlaceAlertPage"
+                    Html.map
+                    InPlaceAlertPageMsg
+                    (InPlaceAlertPage.view page)
 
-        PageInfoRefreshPage page ->
-            Debug.log "PageInfoRefreshPage"
-                Html.map
-                PageInfoRefreshMsg
-                (PageInfoRefreshPage.view page)
+            PageInfoRefreshPage page ->
+                Debug.log "PageInfoRefreshPage"
+                    Html.map
+                    PageInfoRefreshMsg
+                    (PageInfoRefreshPage.view page)
 
-        HtmlPage page ->
-            Debug.log "HtmlPage"
-                Html.map
-                HtmlPageMsg
-                (HtmlPage.view page)
+            HtmlPage page ->
+                Debug.log "HtmlPage"
+                    Html.map
+                    HtmlPageMsg
+                    (HtmlPage.view page)
 
-        MarkdownPage page ->
-            Debug.log "MarkdownPage"
-                Html.map
-                MarkdownPageMsg
-                (MarkdownPage.view page)
+            MarkdownPage page ->
+                Debug.log "MarkdownPage"
+                    Html.map
+                    MarkdownPageMsg
+                    (MarkdownPage.view page)
 
-        BlogPage page ->
-            Debug.log "BlogPage"
-                Html.map
-                BlogPageMsg
-                (BlogPage.view page)
+            BlogPage page ->
+                Debug.log "BlogPage"
+                    Html.map
+                    BlogPageMsg
+                    (BlogPage.view page)
 
-        PostPage page ->
-            Debug.log "PostPage"
-                Html.map
-                PostPageMsg
-                (PostPage.view page)
+            PostPage page ->
+                Debug.log "PostPage"
+                    Html.map
+                    PostPageMsg
+                    (PostPage.view page)
+        ]
