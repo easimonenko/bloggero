@@ -1,7 +1,7 @@
 module Page exposing (Model, Msg(..), OutMsg(..), init, update, view)
 
-import Debug
 import Html
+import Html.Attributes exposing (class)
 import Http
 import Json.Decode exposing (..)
 import Json.Decode.Pipeline exposing (..)
@@ -19,6 +19,7 @@ import Material
 import Alert.AlertLevel as AlertLevel
 import Blog.BlogPage as BlogPage
 import Blog.PostPage as PostPage
+import Page.PageInfo as PageInfo
 import Page.Breadcrumbs as Breadcrumbs
 import Page.EmptyPlacePage as EmptyPlacePage
 import Page.HomePage as HomePage
@@ -35,15 +36,9 @@ import Utils
 type alias Model =
     { mdl : Material.Model
     , location : Navigation.Location
-    , pageInfo : Maybe PageInfo
+    , pageInfo : Maybe PageInfo.PageInfo
     , breadcrumbs : Breadcrumbs.Model
     , driverModel : Driver
-    }
-
-
-type alias PageInfo =
-    { title : String
-    , driver : String
     }
 
 
@@ -60,6 +55,7 @@ type Driver
 
 type Msg
     = Mdl (Material.Msg Msg)
+    | PageInfoMsg PageInfo.Msg
     | PageInfoFetchSucceed String
     | PageInfoFetchFail Http.Error
     | PageContentFetchSucceed String
@@ -99,16 +95,7 @@ init location =
           , driverModel = EmptyPlacePage emptyPlacePage
           }
         , Cmd.batch
-            [ Task.attempt
-                (\result ->
-                    case result of
-                        Err msg ->
-                            PageInfoFetchFail msg
-
-                        Ok msg ->
-                            PageInfoFetchSucceed msg
-                )
-                (Http.toTask <| Http.getString <| path ++ "/index.json")
+            [ Cmd.map PageInfoMsg (PageInfo.init path)
             , Cmd.map EmptyPlacePageMsg emptyPlacePageCmds
             , Cmd.map BreadcrumbsMsg breadcrumbsCmds
             ]
@@ -122,158 +109,157 @@ update msg model =
         Mdl mdlMsg ->
             Utils.tuple2triple (Material.update mdlMsg model) NoneOutMsg
 
-        PageInfoFetchSucceed pageInfoJson ->
-            let
-                pageInfoDecoder =
-                    decode PageInfo
-                        |> required "title" string
-                        |> optional "driver" string "markdown"
-            in
-                case decodeString pageInfoDecoder pageInfoJson of
-                    Ok pageInfo ->
-                        case pageInfo.driver of
-                            "markdown" ->
-                                let
-                                    ( page, pageCmds ) =
-                                        MarkdownPage.init model.location
-                                in
-                                    ( { model
-                                        | pageInfo = Just pageInfo
-                                        , driverModel = MarkdownPage page
-                                      }
-                                    , Cmd.map MarkdownPageMsg pageCmds
-                                    , AlertOutMsg
-                                        AlertLevel.InfoLevel
-                                        "PageInfoFetchSucceed: driver = markdown"
-                                    )
+        PageInfoMsg pageInfoMsg ->
+            case PageInfo.update pageInfoMsg of
+                PageInfo.Success path pageInfoJson pageInfo ->
+                    case pageInfo.driver of
+                        "markdown" ->
+                            let
+                                ( page, pageCmds ) =
+                                    MarkdownPage.init model.location
+                            in
+                                ( { model
+                                    | pageInfo = Just pageInfo
+                                    , driverModel = MarkdownPage page
+                                  }
+                                , Cmd.map MarkdownPageMsg pageCmds
+                                , AlertOutMsg
+                                    AlertLevel.InfoLevel
+                                    "PageInfoFetchSucceed: driver = markdown"
+                                )
 
-                            "html" ->
-                                let
-                                    ( page, pageCmds ) =
-                                        HtmlPage.init model.location
-                                in
-                                    ( { model
-                                        | pageInfo = Just pageInfo
-                                        , driverModel = HtmlPage page
-                                      }
-                                    , Cmd.map HtmlPageMsg pageCmds
-                                    , AlertOutMsg
-                                        AlertLevel.InfoLevel
-                                        "PageInfoFetchSucceed: driver = html"
-                                    )
+                        "html" ->
+                            let
+                                ( page, pageCmds ) =
+                                    HtmlPage.init model.location
+                            in
+                                ( { model
+                                    | pageInfo = Just pageInfo
+                                    , driverModel = HtmlPage page
+                                  }
+                                , Cmd.map HtmlPageMsg pageCmds
+                                , AlertOutMsg
+                                    AlertLevel.InfoLevel
+                                    "PageInfoFetchSucceed: driver = html"
+                                )
 
-                            "home" ->
-                                let
-                                    ( homePage, homePageCmds, homePageOutMsg ) =
-                                        let
-                                            defaultConfig =
-                                                HomePage.defaultConfig
-                                        in
-                                            HomePage.init { defaultConfig | title = pageInfo.title }
-                                in
-                                    ( { model
-                                        | pageInfo = Just pageInfo
-                                        , driverModel = HomePage homePage
-                                      }
-                                    , Cmd.map HomePageMsg homePageCmds
-                                    , AlertOutMsg
-                                        AlertLevel.InfoLevel
-                                        "PageInfoFetchSucceed: driver = home"
-                                    )
+                        "home" ->
+                            let
+                                ( homePage, homePageCmds, homePageOutMsg ) =
+                                    let
+                                        defaultConfig =
+                                            HomePage.defaultConfig
+                                    in
+                                        HomePage.init { defaultConfig | title = pageInfo.title }
+                            in
+                                ( { model
+                                    | pageInfo = Just pageInfo
+                                    , driverModel = HomePage homePage
+                                  }
+                                , Cmd.map HomePageMsg homePageCmds
+                                , AlertOutMsg
+                                    AlertLevel.InfoLevel
+                                    "PageInfoFetchSucceed: driver = home"
+                                )
 
-                            "blog" ->
-                                let
-                                    ( blogPage, blogPageCmds, blogPageOutMsg ) =
-                                        let
-                                            defaultConfig =
-                                                BlogPage.defaultConfig
-                                        in
-                                            BlogPage.init { defaultConfig | title = pageInfo.title }
-                                in
-                                    ( { model
-                                        | pageInfo = Just pageInfo
-                                        , driverModel = BlogPage blogPage
-                                      }
-                                    , Cmd.map BlogPageMsg blogPageCmds
-                                    , AlertOutMsg
-                                        AlertLevel.InfoLevel
-                                        "PageInfoFetchSucceed: driver = blog"
-                                    )
+                        "blog" ->
+                            let
+                                ( blogPage, blogPageCmds, blogPageOutMsg ) =
+                                    let
+                                        defaultConfig =
+                                            BlogPage.defaultConfig
+                                    in
+                                        BlogPage.init { defaultConfig | title = pageInfo.title }
+                            in
+                                ( { model
+                                    | pageInfo = Just pageInfo
+                                    , driverModel = BlogPage blogPage
+                                  }
+                                , Cmd.map BlogPageMsg blogPageCmds
+                                , AlertOutMsg
+                                    AlertLevel.InfoLevel
+                                    "PageInfoFetchSucceed: driver = blog"
+                                )
 
-                            "post" ->
-                                let
-                                    ( page, pageCmds ) =
-                                        PostPage.init model.location
-                                in
-                                    ( { model
-                                        | pageInfo = Just pageInfo
-                                        , driverModel = PostPage page
-                                      }
-                                    , Cmd.map PostPageMsg pageCmds
-                                    , AlertOutMsg
-                                        AlertLevel.InfoLevel
-                                        "PageInfoFetchSucceed: driver = post"
-                                    )
+                        "post" ->
+                            let
+                                ( page, pageCmds ) =
+                                    PostPage.init model.location
+                            in
+                                ( { model
+                                    | pageInfo = Just pageInfo
+                                    , driverModel = PostPage page
+                                  }
+                                , Cmd.map PostPageMsg pageCmds
+                                , AlertOutMsg
+                                    AlertLevel.InfoLevel
+                                    "PageInfoFetchSucceed: driver = post"
+                                )
 
-                            unknownType ->
-                                let
-                                    ( inPlaceAlertPage, inPlaceAlertPageCmds ) =
-                                        InPlaceAlertPage.init
-                                            AlertLevel.WarningLevel
-                                            ("Unknown type of page: " ++ unknownType)
-                                in
-                                    ( { model
-                                        | pageInfo = Just pageInfo
-                                        , driverModel = InPlaceAlertPage inPlaceAlertPage
-                                      }
-                                    , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
-                                    , AlertOutMsg
+                        unknownType ->
+                            let
+                                ( inPlaceAlertPage, inPlaceAlertPageCmds ) =
+                                    InPlaceAlertPage.init
                                         AlertLevel.WarningLevel
-                                        ("Page info fetch succeed, but unknown content type: "
-                                            ++ unknownType
-                                        )
+                                        ("Unknown type of page: " ++ unknownType)
+                            in
+                                ( { model
+                                    | pageInfo = Just pageInfo
+                                    , driverModel = InPlaceAlertPage inPlaceAlertPage
+                                  }
+                                , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
+                                , AlertOutMsg
+                                    AlertLevel.WarningLevel
+                                    ("Page info fetch succeed, but unknown content type: "
+                                        ++ unknownType
                                     )
+                                )
 
-                    Err info ->
-                        let
-                            ( inPlaceAlertPage, inPlaceAlertPageCmds ) =
-                                InPlaceAlertPage.init
-                                    AlertLevel.DangerLevel
-                                    ((Utils.pagePath model.location) ++ ": " ++ info)
-                        in
-                            ( { model
-                                | pageInfo = Nothing
-                                , driverModel = InPlaceAlertPage inPlaceAlertPage
-                              }
-                            , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
-                            , AlertOutMsg
+                PageInfo.FetchFail path httpError ->
+                    case httpError of
+                        Http.NetworkError ->
+                            let
+                                ( page, cmds, outMsg ) =
+                                    PageInfoRefreshPage.init
+                                        "Network Error"
+                                        "Network error: try refreshing the page later."
+                            in
+                                ( { model | driverModel = PageInfoRefreshPage page }
+                                , Cmd.map PageInfoRefreshMsg cmds
+                                , NoneOutMsg
+                                )
+
+                        Http.Timeout ->
+                            let
+                                ( page, cmds, outMsg ) =
+                                    PageInfoRefreshPage.init
+                                        "Http Timeout"
+                                        "Http timeout: try refreshing the page later."
+                            in
+                                ( { model | driverModel = PageInfoRefreshPage page }
+                                , Cmd.map PageInfoRefreshMsg cmds
+                                , NoneOutMsg
+                                )
+
+                        _ ->
+                            ( model, Cmd.none, NoneOutMsg )
+
+                PageInfo.BadJson path pageInfoJson errorInfo ->
+                    let
+                        ( inPlaceAlertPage, inPlaceAlertPageCmds ) =
+                            InPlaceAlertPage.init
                                 AlertLevel.DangerLevel
-                                ("Page info fetch succeed, but parsed fail: " ++ info)
-                            )
-
-        PageInfoFetchFail (Http.NetworkError) ->
-            let
-                ( page, cmds, outMsg ) =
-                    PageInfoRefreshPage.init
-                        "Network Error"
-                        "Network error: try refreshing the page later."
-            in
-                ( { model | driverModel = PageInfoRefreshPage page }
-                , Cmd.map PageInfoRefreshMsg cmds
-                , NoneOutMsg
-                )
-
-        PageInfoFetchFail (Http.Timeout) ->
-            let
-                ( page, cmds, outMsg ) =
-                    PageInfoRefreshPage.init
-                        "Http Timeout"
-                        "Http timeout: try refreshing the page later."
-            in
-                ( { model | driverModel = PageInfoRefreshPage page }
-                , Cmd.map PageInfoRefreshMsg cmds
-                , NoneOutMsg
-                )
+                                (path ++ ": " ++ errorInfo)
+                    in
+                        ( { model
+                            | pageInfo = Nothing
+                            , driverModel = InPlaceAlertPage inPlaceAlertPage
+                          }
+                        , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
+                        , AlertOutMsg
+                            AlertLevel.DangerLevel
+                            ("Page info fetch succeed, but parsed fail: " ++ errorInfo)
+                        )
 
         PageInfoRefreshMsg pageInfoRefreshMsg ->
             case model.driverModel of
@@ -281,35 +267,30 @@ update msg model =
                     let
                         ( page, pageInfoRefreshCmds, outMsg ) =
                             PageInfoRefreshPage.update pageInfoRefreshMsg pageModel
-
-                        pageInfoFetchCmds =
-                            case outMsg of
-                                PageInfoRefreshPage.PageInfoRefresh ->
-                                    Task.attempt
-                                        (\result ->
-                                            case result of
-                                                Err msg ->
-                                                    PageInfoFetchFail msg
-
-                                                Ok msg ->
-                                                    PageInfoFetchSucceed msg
-                                        )
-                                        (Http.toTask <|
-                                            Http.getString <|
-                                                (Utils.pagePath model.location)
-                                                    ++ "/index.json"
-                                        )
-
-                                _ ->
-                                    Cmd.none
                     in
-                        ( { model | driverModel = PageInfoRefreshPage page }
-                        , Cmd.batch
-                            [ Cmd.map PageInfoRefreshMsg pageInfoRefreshCmds
-                            , pageInfoFetchCmds
-                            ]
-                        , NoneOutMsg
-                        )
+                        case outMsg of
+                            PageInfoRefreshPage.PageInfoRefresh ->
+                                let
+                                    path =
+                                        Utils.pagePath model.location
+
+                                    ( breadcrumbs, breadcrumbsCmds ) =
+                                        Breadcrumbs.init path
+                                in
+                                    ( { model
+                                        | breadcrumbs = breadcrumbs
+                                        , driverModel = PageInfoRefreshPage page
+                                      }
+                                    , Cmd.batch
+                                        [ Cmd.map PageInfoRefreshMsg pageInfoRefreshCmds
+                                        , Cmd.map PageInfoMsg (PageInfo.init path)
+                                        , Cmd.map BreadcrumbsMsg breadcrumbsCmds
+                                        ]
+                                    , NoneOutMsg
+                                    )
+
+                            _ ->
+                                ( model, Cmd.none, NoneOutMsg )
 
                 _ ->
                     ( model, Cmd.none, NoneOutMsg )
@@ -420,57 +401,49 @@ update msg model =
 
 view : Model -> Html.Html Msg
 view model =
-    Html.div []
+    Html.div [ class "page" ]
         [ if (Utils.pagePath model.location) /= "/home" then
             Html.map BreadcrumbsMsg (Breadcrumbs.view model.breadcrumbs)
           else
             Html.text ""
         , case model.driverModel of
             HomePage page ->
-                Debug.log "HomePage"
-                    Html.map
+                Html.map
                     HomePageMsg
                     (HomePage.view page)
 
             EmptyPlacePage page ->
-                Debug.log "EmptyPlacePage"
-                    Html.map
+                Html.map
                     EmptyPlacePageMsg
                     (EmptyPlacePage.view page)
 
             InPlaceAlertPage page ->
-                Debug.log "InPlaceAlertPage"
-                    Html.map
+                Html.map
                     InPlaceAlertPageMsg
                     (InPlaceAlertPage.view page)
 
             PageInfoRefreshPage page ->
-                Debug.log "PageInfoRefreshPage"
-                    Html.map
+                Html.map
                     PageInfoRefreshMsg
                     (PageInfoRefreshPage.view page)
 
             HtmlPage page ->
-                Debug.log "HtmlPage"
-                    Html.map
+                Html.map
                     HtmlPageMsg
                     (HtmlPage.view page)
 
             MarkdownPage page ->
-                Debug.log "MarkdownPage"
-                    Html.map
+                Html.map
                     MarkdownPageMsg
                     (MarkdownPage.view page)
 
             BlogPage page ->
-                Debug.log "BlogPage"
-                    Html.map
+                Html.map
                     BlogPageMsg
                     (BlogPage.view page)
 
             PostPage page ->
-                Debug.log "PostPage"
-                    Html.map
+                Html.map
                     PostPageMsg
                     (PostPage.view page)
         ]
