@@ -362,96 +362,41 @@ update msg model =
             in
                 ( { model | alertList = updatedAlertList }, Cmd.map AlertListMsg alertListCmds )
 
-        {--TODO: replace on OutMsg --}
         PageMsg pageMsg ->
-            case pageMsg of
-                Page.PageInfoFetchFail httpError ->
+            case model.page of
+                Just page ->
                     let
-                        message =
-                            case httpError of
-                                Http.BadUrl info ->
-                                    "[BadUrl]: " ++ info
-
-                                Http.Timeout ->
-                                    "[Timeout]"
-
-                                Http.NetworkError ->
-                                    "[NetworkError]"
-
-                                Http.BadStatus response ->
-                                    "[BadStatus]: "
-                                        ++ (toString response.status.code)
-                                        ++ " - "
-                                        ++ response.status.message
-
-                                Http.BadPayload info response ->
-                                    "[BadPayload]: " ++ info
-
-                        ( alertList, alertListCmds ) =
-                            AlertList.add model.alertList AlertLevel.DangerLevel message
+                        ( updatedPage, pageCmds, outMsg ) =
+                            Page.update pageMsg page
                     in
-                        case model.page of
-                            Just page ->
-                                let
-                                    ( updatedPage, pageCmds, outMsg ) =
-                                        Page.update pageMsg page
-                                in
-                                    ( { model | page = Just updatedPage, alertList = alertList }
-                                    , Cmd.batch
-                                        [ Cmd.map AlertListMsg alertListCmds
-                                        , Cmd.map PageMsg pageCmds
-                                        ]
-                                    )
-
-                            Nothing ->
-                                let
-                                    ( alertList2, alertListCmds2 ) =
-                                        AlertList.add alertList
-                                            AlertLevel.DangerLevel
-                                            "WTF: page is Nothing!"
-                                in
-                                    ( { model | alertList = alertList2 }
-                                    , Cmd.batch
-                                        [ Cmd.map AlertListMsg alertListCmds
-                                        , Cmd.map AlertListMsg alertListCmds2
-                                        ]
-                                    )
-
-                _ ->
-                    case model.page of
-                        Just page ->
-                            let
-                                ( updatedPage, pageCmds, outMsg ) =
-                                    Page.update pageMsg page
-                            in
-                                case outMsg of
-                                    Page.NoneOutMsg ->
-                                        ( { model | page = Just updatedPage }
-                                        , Cmd.map PageMsg pageCmds
-                                        )
-
-                                    Page.AlertOutMsg level info ->
-                                        let
-                                            ( alertList, alertListCmds ) =
-                                                AlertList.add model.alertList level info
-                                        in
-                                            ( { model | page = Just updatedPage }
-                                            , Cmd.batch
-                                                [ Cmd.map PageMsg pageCmds
-                                                , Cmd.map AlertListMsg alertListCmds
-                                                ]
-                                            )
-
-                        Nothing ->
-                            let
-                                ( alertList, alertListCmds ) =
-                                    AlertList.add model.alertList
-                                        AlertLevel.DangerLevel
-                                        "WTF: page is Nothing!"
-                            in
-                                ( { model | alertList = alertList }
-                                , Cmd.map AlertListMsg alertListCmds
+                        case outMsg of
+                            Page.NoneOutMsg ->
+                                ( { model | page = Just updatedPage }
+                                , Cmd.map PageMsg pageCmds
                                 )
+
+                            Page.AlertOutMsg level info ->
+                                let
+                                    ( alertList, alertListCmds ) =
+                                        AlertList.add model.alertList level info
+                                in
+                                    ( { model | page = Just updatedPage }
+                                    , Cmd.batch
+                                        [ Cmd.map PageMsg pageCmds
+                                        , Cmd.map AlertListMsg alertListCmds
+                                        ]
+                                    )
+
+                Nothing ->
+                    let
+                        ( alertList, alertListCmds ) =
+                            AlertList.add model.alertList
+                                AlertLevel.DangerLevel
+                                "WTF: page is Nothing!"
+                    in
+                        ( { model | alertList = alertList }
+                        , Cmd.map AlertListMsg alertListCmds
+                        )
 
         SnackbarMsg snackbarMsg ->
             let

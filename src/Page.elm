@@ -56,10 +56,6 @@ type Driver
 type Msg
     = Mdl (Material.Msg Msg)
     | PageInfoMsg PageInfo.Msg
-    | PageInfoFetchSucceed String
-    | PageInfoFetchFail Http.Error
-    | PageContentFetchSucceed String
-    | PageContentFetchFail Http.Error
     | PageInfoRefreshMsg PageInfoRefreshPage.Msg
     | HomePageMsg HomePage.Msg
     | EmptyPlacePageMsg EmptyPlacePage.Msg
@@ -395,8 +391,20 @@ update msg model =
                 _ ->
                     ( model, Cmd.none, NoneOutMsg )
 
-        _ ->
-            ( model, Cmd.none, NoneOutMsg )
+        EmptyPlacePageMsg pageMsg ->
+            case model.driverModel of
+                EmptyPlacePage page ->
+                    let
+                        ( updatedPage, pageCmds ) =
+                            EmptyPlacePage.update pageMsg page
+                    in
+                        ( { model | driverModel = EmptyPlacePage updatedPage }
+                        , Cmd.map EmptyPlacePageMsg pageCmds
+                        , NoneOutMsg
+                        )
+
+                _ ->
+                    ( model, Cmd.none, NoneOutMsg )
 
 
 view : Model -> Html.Html Msg
