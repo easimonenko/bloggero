@@ -6,19 +6,26 @@
 }
 
 .breadcrumbs > li {
+  border-color: gray;
+  border-left-style: solid;
+  border-left-width: 0.5pt;
+  border-right-style: solid;
+  border-right-width: 0.5pt;
   display: inline-block;
-  padding-left: 1em;
-  padding-right: 1em;
+  padding-left: 0.5em;
+  padding-right: 0.5em;
 }
 
 .breadcrumbs > :first-child {
+  border-left-style: none;
   border-right-style: solid;
-  border-right-width: 1pt;
+  border-right-width: 0.5pt;
   padding-left: 0;
 }
 
 .breadcrumbs > :last-child {
   border-left-style: solid;
-  border-left-width: 1pt;
+  border-left-width: 0.5pt;
+  border-right-style: none;
   padding-right: 0;
 }
