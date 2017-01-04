@@ -1,0 +1,18 @@
+.post-info {
+  border-left-color: gray;
+  border-left-style: solid;
+  border-left-width: 2pt;
+  padding-left: 1em;
+}
+
+.post-author {
+  font-weight: 600;
+}
+
+.post-date {
+  font-weight: 600;
+}
+
+.post-abstract {
+  font-style: italic;
+}
