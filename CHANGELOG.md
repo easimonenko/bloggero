@@ -1,5 +1,15 @@
 # Bloggero ChangeLog
 
+## 2017-01-05, Version 0.2.5
+
+* :new: Post page with support HTML and Markdown format and with meta info.
+* :new: Initial support for breadcrumbs in all pages.
+* Extracted PageInfo.
+* Added usage with Gulp.
+* Refactoring and cleaning of code.
+* Upgrade external CSS libraries (mdl, font-awesome, highlight.js).
+* Many other minor changes.
+
 ## 2016-12-14, Version 0.2.4
 
 * :new: Added component for links to pages.
