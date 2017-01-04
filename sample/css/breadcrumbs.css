@@ -5,3 +5,21 @@
   margin: 1em;
   padding: 1em;
 }
+
+.breadcrumbs > li {
+  display: inline-block;
+  padding-left: 1em;
+  padding-right: 1em;
+}
+
+.breadcrumbs > :first-child {
+  border-right-style: solid;
+  border-right-width: 1pt;
+  padding-left: 0;
+}
+
+.breadcrumbs > :last-child {
+  border-left-style: solid;
+  border-left-width: 1pt;
+  padding-right: 0;
+}

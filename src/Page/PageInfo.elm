@@ -12,15 +12,19 @@ type alias PageInfo =
     }
 
 
+type alias Path =
+    String
+
+
 type Msg
-    = PageInfoFetchSucceed String
-    | PageInfoFetchFail Http.Error
+    = PageInfoFetchSucceed Path String
+    | PageInfoFetchFail Path Http.Error
 
 
 type OutMsg
-    = Success String PageInfo
-    | FetchFail Http.Error
-    | BadJson String String
+    = Success Path String PageInfo
+    | FetchFail Path Http.Error
+    | BadJson Path String String
 
 
 init : String -> Cmd Msg
@@ -29,10 +33,10 @@ init path =
         (\result ->
             case result of
                 Ok msg ->
-                    PageInfoFetchSucceed msg
+                    PageInfoFetchSucceed path msg
 
                 Err msg ->
-                    PageInfoFetchFail msg
+                    PageInfoFetchFail path msg
         )
         (Http.toTask <| Http.getString <| path ++ "/index.json")
 
@@ -40,7 +44,7 @@ init path =
 update : Msg -> OutMsg
 update msg =
     case msg of
-        PageInfoFetchSucceed pageInfoJson ->
+        PageInfoFetchSucceed path pageInfoJson ->
             let
                 pageInfoDecoder =
                     decode PageInfo
@@ -49,10 +53,10 @@ update msg =
             in
                 case decodeString pageInfoDecoder pageInfoJson of
                     Ok pageInfo ->
-                        Success pageInfoJson pageInfo
+                        Success path pageInfoJson pageInfo
 
                     Err errorInfo ->
-                        BadJson pageInfoJson errorInfo
+                        BadJson path pageInfoJson errorInfo
 
-        PageInfoFetchFail httpError ->
-            FetchFail httpError
+        PageInfoFetchFail path httpError ->
+            FetchFail path httpError

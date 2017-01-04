@@ -421,7 +421,10 @@ update msg model =
 view : Model -> Html.Html Msg
 view model =
     Html.div []
-        [ Html.map BreadcrumbsMsg (Breadcrumbs.view model.breadcrumbs)
+        [ if (Utils.pagePath model.location) /= "/home" then
+            Html.map BreadcrumbsMsg (Breadcrumbs.view model.breadcrumbs)
+          else
+            Html.text ""
         , case model.driverModel of
             HomePage page ->
                 Debug.log "HomePage"
