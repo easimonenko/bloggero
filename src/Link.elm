@@ -1,16 +1,14 @@
 module Link exposing (Model, Msg, init, update, view)
 
-import Html exposing (..)
+import Html
 import Html.Attributes exposing (..)
-import Http
-import Json.Decode exposing (..)
-import Task
 
 
 -- Bloggero modules
 
 import Alert.InPlaceAlert as InPlaceAlert
 import Alert.AlertLevel as AlertLevel
+import Page.PageInfo as PageInfo
 import Utils
 
 
@@ -22,56 +20,46 @@ type alias Model =
 
 
 type Msg
-    = PageInfoFetchSucceed String
-    | PageInfoFetchFail Http.Error
+    = PageInfoMsg PageInfo.Msg
     | InPlaceAlertMsg InPlaceAlert.Msg
 
 
 init : String -> ( Model, Cmd Msg )
 init pagePath =
     ( { pagePath = pagePath, pageTitle = "", inPlaceAlert = Nothing }
-    , Task.attempt
-        (\result ->
-            case result of
-                Ok pageInfo ->
-                    PageInfoFetchSucceed pageInfo
-
-                Err error ->
-                    PageInfoFetchFail error
-        )
-        (Http.toTask <| Http.getString <| pagePath ++ "/index.json")
+    , Cmd.map PageInfoMsg (PageInfo.init pagePath)
     )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        PageInfoFetchSucceed pageInfo ->
-            let
-                decoder =
-                    field "title" string
-            in
-                case decodeString decoder pageInfo of
-                    Ok pageTitle ->
-                        ( { model | pageTitle = pageTitle }, Cmd.none )
+        PageInfoMsg msg ->
+            case PageInfo.update msg of
+                PageInfo.Success path pageInfoJson pageInfo ->
+                    ( { model | pageTitle = pageInfo.title }
+                    , Cmd.none
+                    )
 
-                    Err info ->
-                        let
-                            ( inPlaceAlert, inPlaceAlertCmds ) =
-                                InPlaceAlert.init AlertLevel.DangerLevel info
-                        in
-                            ( { model | inPlaceAlert = Just inPlaceAlert }
-                            , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
-                            )
+                PageInfo.BadJson path pageInfoJson errorInfo ->
+                    let
+                        ( inPlaceAlert, inPlaceAlertCmds ) =
+                            InPlaceAlert.init AlertLevel.DangerLevel errorInfo
+                    in
+                        ( { model | inPlaceAlert = Just inPlaceAlert }
+                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                        )
 
-        PageInfoFetchFail error ->
-            let
-                ( inPlaceAlert, inPlaceAlertCmds ) =
-                    InPlaceAlert.init AlertLevel.DangerLevel (Utils.toHumanReadable error)
-            in
-                ( { model | inPlaceAlert = Just inPlaceAlert }
-                , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
-                )
+                PageInfo.FetchFail path httpError ->
+                    let
+                        ( inPlaceAlert, inPlaceAlertCmds ) =
+                            InPlaceAlert.init
+                                AlertLevel.DangerLevel
+                                (Utils.toHumanReadable httpError)
+                    in
+                        ( { model | inPlaceAlert = Just inPlaceAlert }
+                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                        )
 
         InPlaceAlertMsg inPlaceAlertMsg ->
             case model.inPlaceAlert of
@@ -88,11 +76,11 @@ update msg model =
                     ( model, Cmd.none )
 
 
-view : Model -> Html Msg
+view : Model -> Html.Html Msg
 view model =
     case model.inPlaceAlert of
         Nothing ->
-            a [ href <| "/#!" ++ model.pagePath ] [ text model.pageTitle ]
+            Html.a [ href <| "/#!" ++ model.pagePath ] [ Html.text model.pageTitle ]
 
         Just inPlaceAlert ->
             Html.map InPlaceAlertMsg (InPlaceAlert.view inPlaceAlert)
