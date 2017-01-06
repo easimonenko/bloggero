@@ -103,7 +103,7 @@ update : Msg -> Model -> ( Model, Cmd Msg, OutMsg )
 update msg model =
     case msg of
         Mdl mdlMsg ->
-            Utils.tuple2triple (Material.update mdlMsg model) NoneOutMsg
+            Utils.tuple2triple (Material.update Mdl mdlMsg model) NoneOutMsg
 
         PageInfoMsg pageInfoMsg ->
             case PageInfo.update pageInfoMsg of

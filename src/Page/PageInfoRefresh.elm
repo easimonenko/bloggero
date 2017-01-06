@@ -49,7 +49,7 @@ update : Msg -> Model -> ( Model, Cmd Msg, OutMsg )
 update msg model =
     case msg of
         Mdl mdlMsg ->
-            Utils.tuple2triple (Material.update mdlMsg model) NoneOutMsg
+            Utils.tuple2triple (Material.update Mdl mdlMsg model) NoneOutMsg
 
         ButtonRefresh ->
             ( model, Cmd.none, PageInfoRefresh )
@@ -74,7 +74,7 @@ view model =
                 [ MdlButton.raised
                 , MdlButton.colored
                 , MdlButton.ripple
-                , MdlButton.onClick ButtonRefresh
+                , MdlOptions.onClick ButtonRefresh
                 ]
                 [ text "Refresh"
                 ]

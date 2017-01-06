@@ -9,8 +9,8 @@
     ],
     "exposed-modules": [],
     "dependencies": {
-        "MichaelCombs28/elm-mdl": "1.0.1 <= v < 2.0.0",
         "NoRedInk/elm-decode-pipeline": "3.0.0 <= v < 4.0.0",
+        "debois/elm-mdl": "8.1.0 <= v < 9.0.0",
         "elm-community/html-extra": "2.1.0 <= v < 3.0.0",
         "elm-community/list-extra": "4.0.0 <= v < 5.0.0",
         "elm-community/string-extra": "1.1.1 <= v < 2.0.0",

@@ -95,7 +95,7 @@ update msg model =
                 ( { model | postList = postList }, Cmd.map PostListMsg postListCmds, outMsg )
 
         Mdl mdlMsg ->
-            tuple2triple (Material.update mdlMsg model) NoneOutMsg
+            tuple2triple (Material.update Mdl mdlMsg model) NoneOutMsg
 
 
 view : Model -> Html Msg

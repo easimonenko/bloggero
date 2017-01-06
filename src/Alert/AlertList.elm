@@ -48,7 +48,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Mdl mdlMsg ->
-            Material.update mdlMsg model
+            Material.update Mdl mdlMsg model
 
         AlertMsg alertMsg ->
             case alertMsg of

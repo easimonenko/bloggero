@@ -66,7 +66,7 @@ view model =
                 [ Button.render Mdl
                     [ 0 ]
                     model.mdl
-                    [ Button.icon, Button.onClick (AlertClose model.id) ]
+                    [ Button.icon, MdlOptions.onClick (AlertClose model.id) ]
                     [ Icon.i "close" ]
                 ]
             ]

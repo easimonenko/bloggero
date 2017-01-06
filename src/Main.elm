@@ -23,6 +23,7 @@ import Material.Grid as Grid exposing (Device(..))
 import Material.Footer as Footer
 import Material.Icon as Icon
 import Material.Layout as Layout
+import Material.Options as MdlOptions
 import Material.Snackbar as Snackbar
 
 
@@ -162,7 +163,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Mdl mdlMsg ->
-            Material.update mdlMsg model
+            Material.update Mdl mdlMsg model
 
         LocationChange location ->
             if pagePath location == "" then
@@ -519,7 +520,7 @@ drawerView model =
                 [ Button.icon
                 , Button.colored
                 , Button.ripple
-                , Button.onClick HideDrawer
+                , MdlOptions.onClick HideDrawer
                 ]
                 [ Icon.i "close"
                 ]
