@@ -114,9 +114,9 @@ Use --debug option for enable debug history. By default false.
 
 ## Technologies
 
-The project is written in Elm version 0.18 using the elm-mdl (currently by
-MichaelCombs28), which implements on Elm user interface Material Design Lite.
+The project is written in Elm version 0.18 using the elm-mdl, which implements
+on Elm user interface Material Design Lite.
 
 ---
 
-(c) Evgeniy A. Simonenko <easimonenko@mail.ru>, 2016
+(c) Evgeniy A. Simonenko <easimonenko@mail.ru>, 2016-2017

@@ -1,5 +1,9 @@
 # Bloggero ChangeLog
 
+## 2017-01-07, Version 0.2.6
+
+* Migrate back from MichaelCombs28/elm-mdl to debois/elm-mdl.
+
 ## 2017-01-05, Version 0.2.5
 
 * :new: Post page with support HTML and Markdown format and with meta info.
