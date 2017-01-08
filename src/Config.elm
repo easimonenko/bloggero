@@ -9,6 +9,8 @@ type alias Config =
     { title : String
     , mode : Mode
     , sections : List Section
+    , copyright : Maybe Copyright
+    , links : Maybe (List Link)
     }
 
 
@@ -33,6 +35,20 @@ type Placement
     | FooterPlacement
     | SiteMapPlacement
     | UnknownPlacement
+
+
+type alias Copyright =
+    { text : String
+    , url : Maybe String
+    , email : Maybe String
+    }
+
+
+type alias Link =
+    { title : String
+    , url : String
+    , icon : Maybe String
+    }
 
 
 type Msg
@@ -68,27 +84,20 @@ update msg =
 
         ConfigFetchSucceed json ->
             let
-                blogTitle =
-                    decodeString (field "title" string) json
+                modeDecoder =
+                    Json.Decode.map
+                        (\item ->
+                            case item of
+                                "development" ->
+                                    DevelopmentMode
 
-                blogMode =
-                    decodeString
-                        (field "mode" <|
-                            Json.Decode.map
-                                (\item ->
-                                    case item of
-                                        "development" ->
-                                            DevelopmentMode
+                                "production" ->
+                                    ProductionMode
 
-                                        "production" ->
-                                            ProductionMode
-
-                                        _ ->
-                                            UnknownMode
-                                )
-                                string
+                                _ ->
+                                    UnknownMode
                         )
-                        json
+                        string
 
                 placementItemListDecoder =
                     list
@@ -123,10 +132,27 @@ update msg =
                             (field "placement" placementItemListDecoder)
                         )
 
-                blogSections =
-                    decodeString (field "sections" sectionItemListDecoder) json
+                copyrightDecoder =
+                    Json.Decode.map3 Copyright
+                        (field "text" string)
+                        (maybe (field "url" string))
+                        (maybe (field "email" string))
+
+                linkDecoder =
+                    Json.Decode.map3 Link
+                        (field "title" string)
+                        (field "url" string)
+                        (maybe (field "icon" string))
+
+                configDecoder =
+                    Json.Decode.map5 Config
+                        (field "title" string)
+                        (field "mode" modeDecoder)
+                        (field "sections" sectionItemListDecoder)
+                        (maybe (field "copyright" copyrightDecoder))
+                        (maybe (field "links" (list linkDecoder)))
             in
-                case Result.map3 Config blogTitle blogMode blogSections of
+                case decodeString configDecoder json of
                     Ok config ->
                         Success json config
 

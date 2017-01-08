@@ -29,6 +29,7 @@ import Material.Snackbar as Snackbar
 
 import Alert.AlertList as AlertList
 import Alert.AlertLevel as AlertLevel
+import Alert.InPlaceAlert as InPlaceAlert
 import Config
 import Page
 import Utils
@@ -38,6 +39,7 @@ type alias Model =
     { mdl : Material.Model
     , location : Navigation.Location
     , alertList : AlertList.Model
+    , inPlaceAlert : Maybe InPlaceAlert.Model
     , page : Maybe Page.Model
     , snackbar : Snackbar.Model ()
     , config : Maybe Config.Config
@@ -51,6 +53,7 @@ type Msg
     | LocationChange Navigation.Location
     | SnackbarMsg (Snackbar.Msg ())
     | AlertListMsg AlertList.Msg
+    | InPlaceAlertMsg InPlaceAlert.Msg
     | PageMsg Page.Msg
     | HideDrawer
     | ConfigMsg Config.Msg
@@ -80,11 +83,15 @@ init location =
         ( alertList, alertListCmds ) =
             AlertList.init
 
+        ( inPlaceAlert, inPlaceAlertCmds ) =
+            InPlaceAlert.init AlertLevel.InfoLevel "Loading of config..."
+
         model =
             { mdl = Material.model
             , location = location
             , snackbar = Snackbar.model
             , alertList = alertList
+            , inPlaceAlert = Just inPlaceAlert
             , page = Nothing
             , config = Nothing
             , jsonConfig = Nothing
@@ -188,6 +195,20 @@ update msg model =
             in
                 ( { model | alertList = updatedAlertList }, Cmd.map AlertListMsg alertListCmds )
 
+        InPlaceAlertMsg msg ->
+            case model.inPlaceAlert of
+                Just inPlaceAlert ->
+                    let
+                        ( updatedInPlaceAlert, inPlaceAlertCmds ) =
+                            InPlaceAlert.update msg inPlaceAlert
+                    in
+                        ( { model | inPlaceAlert = Just updatedInPlaceAlert }
+                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                        )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
         PageMsg pageMsg ->
             case model.page of
                 Just page ->
@@ -248,6 +269,7 @@ update msg model =
                     in
                         ( { model
                             | alertList = alertList
+                            , inPlaceAlert = Nothing
                             , config = Just config
                             , jsonConfig = Just json
                           }
@@ -412,40 +434,34 @@ drawerView model =
         ]
 
 
-mainView : Model -> List (Html Msg)
-mainView model =
-    [ Grid.grid []
-        [ Grid.cell [ Grid.size All 8, Grid.offset Desktop 2, Elevation.e3 ]
-            [ Maybe.withDefault (text "Page do'nt loaded.") <|
-                flip Maybe.map
-                    model.page
-                    (\page -> Html.map PageMsg (Page.view page))
-            ]
-        , Grid.cell [ Grid.size All 2 ] <|
-            Maybe.withDefault [] <|
-                flip Maybe.map
-                    model.config
-                    (\config ->
-                        case config.mode of
-                            Config.DevelopmentMode ->
-                                [ Html.map AlertListMsg (AlertList.view model.alertList) ]
-
-                            _ ->
-                                []
-                    )
-        ]
-    , Layout.spacer
-    , Footer.mini []
+footerView : Model -> Html Msg
+footerView model =
+    Footer.mini []
         { left =
-            Footer.left []
-                [ Footer.logo []
-                    [ Footer.html <| span [ innerHtml "&copy; 2016" ] []
-                    ]
-                , Footer.links [] <|
-                    Maybe.withDefault [] <|
-                        flip Maybe.map
-                            model.config
-                            (\config ->
+            Footer.left [] <|
+                Maybe.withDefault [] <|
+                    flip Maybe.map
+                        model.config
+                        (\config ->
+                            [ Footer.logo [] <|
+                                Maybe.withDefault [] <|
+                                    flip Maybe.map
+                                        config.copyright
+                                        (\copyright ->
+                                            [ Footer.html <|
+                                                case copyright.url of
+                                                    Just url ->
+                                                        Html.a
+                                                            [ href url, innerHtml copyright.text ]
+                                                            []
+
+                                                    Nothing ->
+                                                        span
+                                                            [ innerHtml copyright.text ]
+                                                            []
+                                            ]
+                                        )
+                            , Footer.links [] <|
                                 flip List.map
                                     config.sections
                                     (\item ->
@@ -461,24 +477,90 @@ mainView model =
                                                         [ Footer.html <| text item.title ]
                                                 )
                                     )
-                            )
-                ]
-        , right =
-            Footer.right []
-                [ Footer.html <|
-                    a
-                        [ href "https://github.com/easimonenko/bloggero-elm-mdl"
-                        , Html.Attributes.property "role" (Json.Encode.string "button")
-                        , Html.Attributes.title "GitHub"
-                        ]
-                        [ i
-                            [ class "fa fa-github fa-3x fa-hover"
-                            , property "aria-hidden" (Json.Encode.bool True)
                             ]
-                            []
-                        ]
-                ]
+                        )
+        , right =
+            Footer.right [] <|
+                Maybe.withDefault [] <|
+                    flip Maybe.map
+                        model.config
+                        (\config ->
+                            Maybe.withDefault [] <|
+                                flip Maybe.map
+                                    config.links
+                                    (\links ->
+                                        flip List.map
+                                            links
+                                            (\item ->
+                                                Footer.html <|
+                                                    Maybe.withDefault (Html.text "") <|
+                                                        flip Maybe.map
+                                                            item.icon
+                                                            (\icon ->
+                                                                Html.a
+                                                                    [ href item.url
+                                                                    , Html.Attributes.property "role" (Json.Encode.string "button")
+                                                                    , Html.Attributes.title item.title
+                                                                    ]
+                                                                    [ Html.i
+                                                                        [ class ("fa fa-1x fa-hover " ++ "fa-" ++ icon)
+                                                                        , property "aria-hidden" (Json.Encode.bool True)
+                                                                        , innerHtml <| "&nbsp;" ++ item.title
+                                                                        ]
+                                                                        []
+                                                                    ]
+                                                            )
+                                            )
+                                    )
+                        )
         }
+
+
+pageView : Model -> Grid.Cell Msg
+pageView model =
+    Grid.cell [ Grid.size All 8, Grid.offset Desktop 2, Elevation.e3 ]
+        [ Maybe.withDefault (text "") <|
+            flip Maybe.map
+                model.inPlaceAlert
+                (\inPlaceAlert -> Html.map InPlaceAlertMsg (InPlaceAlert.view inPlaceAlert))
+        , Maybe.withDefault (text "") <|
+            flip Maybe.map
+                model.page
+                (\page -> Html.map PageMsg (Page.view page))
+        ]
+
+
+alertListView : Model -> Grid.Cell Msg
+alertListView model =
+    let
+        alertListViewCall =
+            Html.map AlertListMsg (AlertList.view model.alertList)
+    in
+        Grid.cell [ Grid.size All 2 ] <|
+            Maybe.withDefault [ alertListViewCall ] <|
+                flip Maybe.map
+                    model.config
+                    (\config ->
+                        case config.mode of
+                            Config.ProductionMode ->
+                                []
+
+                            Config.DevelopmentMode ->
+                                [ alertListViewCall ]
+
+                            Config.UnknownMode ->
+                                [ alertListViewCall ]
+                    )
+
+
+mainView : Model -> List (Html Msg)
+mainView model =
+    [ Grid.grid []
+        [ pageView model
+        , alertListView model
+        ]
+    , Layout.spacer
+    , footerView model
     , Snackbar.view model.snackbar |> Html.map SnackbarMsg
     ]
 

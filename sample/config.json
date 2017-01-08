@@ -28,6 +28,18 @@
       ]
     }
   ],
+  "copyright": {
+    "text": "&copy; Ivan I. Ivanov, 2016 &mdash; 2017",
+    "url": "/#!/copyright",
+    "email": "email@email"
+  },
+  "links": [
+    {
+      "title": "Made with Bloggero",
+      "url": "https://github.com/easimonenko/bloggero-elm-mdl",
+      "icon": "github"
+    }
+  ],
   "modules": [
     {
       "name": "blog",
