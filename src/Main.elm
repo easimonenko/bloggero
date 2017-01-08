@@ -3,8 +3,6 @@ port module Main exposing (main)
 import Html exposing (..)
 import Html.Attributes exposing (class, classList, href, property, style)
 import Html.Attributes.Extra exposing (innerHtml)
-import Http
-import Json.Decode exposing (field, decodeString, list, maybe, map5, string)
 import Json.Encode
 import List
 import List.Extra
@@ -31,7 +29,9 @@ import Material.Snackbar as Snackbar
 
 import Alert.AlertList as AlertList
 import Alert.AlertLevel as AlertLevel
+import Config
 import Page
+import Utils
 
 
 type alias Model =
@@ -40,50 +40,20 @@ type alias Model =
     , alertList : AlertList.Model
     , page : Maybe Page.Model
     , snackbar : Snackbar.Model ()
-    , config : Maybe Config
+    , config : Maybe Config.Config
+    , jsonConfig : Maybe String
     , sectionId : Maybe String
     }
-
-
-type alias Config =
-    { title : String
-    , mode : Mode
-    , sections : List SectionItem
-    }
-
-
-type Mode
-    = DevelopmentMode
-    | ProductionMode
-    | UnknownMode
-
-
-type alias SectionItem =
-    { id : String
-    , title : String
-    , route : String
-    , icon : Maybe String
-    , placement : List Placement
-    }
-
-
-type Placement
-    = HeaderPlacement
-    | DrawerPlacement
-    | FooterPlacement
-    | SiteMapPlacement
-    | UnknownPlacement
 
 
 type Msg
     = Mdl (Material.Msg Msg)
     | LocationChange Navigation.Location
-    | ConfigFetchSucceed Navigation.Location String
-    | ConfigFetchFail Http.Error
     | SnackbarMsg (Snackbar.Msg ())
     | AlertListMsg AlertList.Msg
     | PageMsg Page.Msg
     | HideDrawer
+    | ConfigMsg Config.Msg
 
 
 port title : String -> Cmd msg
@@ -104,11 +74,6 @@ locationChangeHandler location =
     LocationChange location
 
 
-pagePath : Navigation.Location -> String
-pagePath location =
-    String.dropLeft 2 location.hash
-
-
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
     let
@@ -122,39 +87,28 @@ init location =
             , alertList = alertList
             , page = Nothing
             , config = Nothing
+            , jsonConfig = Nothing
             , sectionId = Nothing
             }
-
-        loadConfig location =
-            Task.attempt
-                (\result ->
-                    case result of
-                        Err msg ->
-                            ConfigFetchFail msg
-
-                        Ok msg ->
-                            ConfigFetchSucceed location msg
-                )
-                (Http.toTask <| Http.getString "/config.json")
     in
-        if pagePath location == "" then
+        if Utils.pagePath location == "" then
             let
                 ( alertList, alertListCmds ) =
                     AlertList.add model.alertList AlertLevel.InfoLevel "Redirect to /home."
             in
-                ( { model | alertList = alertList }
+                ( { model | alertList = alertList, location = { location | hash = "#!/home" } }
                 , Cmd.batch
                     [ Layout.sub0 Mdl
                     , Cmd.map AlertListMsg alertListCmds
-                    , loadConfig { location | hash = "#!/home" }
+                    , Cmd.map ConfigMsg Config.init
                     ]
                 )
         else
             ( model
             , Cmd.batch
                 [ Layout.sub0 Mdl
-                , loadConfig location
                 , Cmd.map AlertListMsg alertListCmds
+                , Cmd.map ConfigMsg Config.init
                 ]
             )
 
@@ -166,7 +120,7 @@ update msg model =
             Material.update Mdl mdlMsg model
 
         LocationChange location ->
-            if pagePath location == "" then
+            if Utils.pagePath location == "" then
                 let
                     ( alertList, alertListCmds ) =
                         AlertList.add model.alertList AlertLevel.InfoLevel "Redirect to /home"
@@ -227,135 +181,6 @@ update msg model =
                         ]
                     )
 
-        ConfigFetchFail httpError ->
-            let
-                message =
-                    "The config is not loaded "
-                        ++ case httpError of
-                            Http.BadUrl info ->
-                                "[BadUrl]: " ++ info
-
-                            Http.Timeout ->
-                                "[Timeout]."
-
-                            Http.NetworkError ->
-                                "[NetworkError]."
-
-                            Http.BadStatus response ->
-                                "[BadStatus]: "
-                                    ++ (toString response.status.code)
-                                    ++ " - "
-                                    ++ response.status.message
-
-                            Http.BadPayload info response ->
-                                "[BadPayload]: " ++ info
-
-                ( alertList, alertListCmds ) =
-                    AlertList.add model.alertList AlertLevel.DangerLevel message
-            in
-                ( { model | alertList = alertList }
-                , Cmd.batch
-                    [ Cmd.map AlertListMsg alertListCmds
-                    ]
-                )
-
-        ConfigFetchSucceed location config ->
-            let
-                blogTitle =
-                    decodeString (field "title" string) config
-
-                blogMode =
-                    decodeString
-                        (field "mode" <|
-                            Json.Decode.map
-                                (\item ->
-                                    case item of
-                                        "development" ->
-                                            DevelopmentMode
-
-                                        "production" ->
-                                            ProductionMode
-
-                                        _ ->
-                                            UnknownMode
-                                )
-                                string
-                        )
-                        config
-
-                placementItemListDecoder =
-                    list
-                        (Json.Decode.map
-                            (\item ->
-                                case item of
-                                    "header" ->
-                                        HeaderPlacement
-
-                                    "drawer" ->
-                                        DrawerPlacement
-
-                                    "footer" ->
-                                        FooterPlacement
-
-                                    "sitemap" ->
-                                        SiteMapPlacement
-
-                                    _ ->
-                                        UnknownPlacement
-                            )
-                            string
-                        )
-
-                sectionItemListDecoder =
-                    list
-                        (map5 SectionItem
-                            (field "id" string)
-                            (field "title" string)
-                            (field "route" string)
-                            (maybe (field "icon" string))
-                            (field "placement" placementItemListDecoder)
-                        )
-
-                blogSections =
-                    decodeString (field "sections" sectionItemListDecoder) config
-            in
-                case Result.map3 (,,) blogTitle blogMode blogSections of
-                    Ok ( blogTitle, blogMode, blogSections ) ->
-                        let
-                            ( alertList, alertListCmds ) =
-                                AlertList.add
-                                    model.alertList
-                                    AlertLevel.SuccessLevel
-                                    "The config is loaded."
-                        in
-                            ( { model
-                                | alertList = alertList
-                                , config =
-                                    Just
-                                        { title = blogTitle
-                                        , mode = blogMode
-                                        , sections = blogSections
-                                        }
-                              }
-                            , Cmd.batch
-                                [ title blogTitle
-                                , Navigation.modifyUrl <| "/" ++ location.hash
-                                , Cmd.map AlertListMsg alertListCmds
-                                ]
-                            )
-
-                    Err info ->
-                        let
-                            message =
-                                "The config is not loaded. " ++ info
-
-                            ( alertList, alertListCmds ) =
-                                AlertList.add model.alertList AlertLevel.DangerLevel message
-                        in
-                            ( { model | alertList = alertList }
-                            , Cmd.map AlertListMsg alertListCmds
-                            )
-
         AlertListMsg alertListMsg ->
             let
                 ( updatedAlertList, alertListCmds ) =
@@ -411,10 +236,58 @@ update msg model =
         HideDrawer ->
             ( model, Task.perform identity (Task.succeed (Layout.toggleDrawer Mdl)) )
 
+        ConfigMsg msg ->
+            case Config.update msg of
+                Config.Success json config ->
+                    let
+                        ( alertList, alertListCmds ) =
+                            AlertList.add
+                                model.alertList
+                                AlertLevel.SuccessLevel
+                                "The config is loaded."
+                    in
+                        ( { model
+                            | alertList = alertList
+                            , config = Just config
+                            , jsonConfig = Just json
+                          }
+                        , Cmd.batch
+                            [ title config.title
+                            , Navigation.modifyUrl <| "/" ++ model.location.hash
+                            , Cmd.map AlertListMsg alertListCmds
+                            ]
+                        )
+
+                Config.FetchFail httpError ->
+                    let
+                        message =
+                            "The config is not loaded. "
+                                ++ Utils.toHumanReadable httpError
+
+                        ( alertList, alertListCmds ) =
+                            AlertList.add model.alertList AlertLevel.DangerLevel message
+                    in
+                        ( { model | alertList = alertList }
+                        , Cmd.batch
+                            [ Cmd.map AlertListMsg alertListCmds
+                            ]
+                        )
+
+                Config.BadJson json info ->
+                    let
+                        message =
+                            "The config is not loaded. " ++ info
+
+                        ( alertList, alertListCmds ) =
+                            AlertList.add model.alertList AlertLevel.DangerLevel message
+                    in
+                        ( { model | alertList = alertList, jsonConfig = Just json }
+                        , Cmd.map AlertListMsg alertListCmds
+                        )
+
 
 subscriptions : { model | mdl : Material.Model } -> Sub Msg
 subscriptions =
-    -- .mdl >> Layout.subs Mdl
     Material.subscriptions Mdl
 
 
@@ -470,7 +343,7 @@ headerView model =
                                 model.config
                                 (\config ->
                                     List.filter
-                                        (\item -> List.member HeaderPlacement item.placement)
+                                        (\item -> List.member Config.HeaderPlacement item.placement)
                                         config.sections
                                 )
                 ]
@@ -533,7 +406,7 @@ drawerView model =
                     (\config ->
                         List.map makeLink <|
                             List.filter
-                                (\item -> List.member DrawerPlacement item.placement)
+                                (\item -> List.member Config.DrawerPlacement item.placement)
                                 config.sections
                     )
         ]
@@ -554,7 +427,7 @@ mainView model =
                     model.config
                     (\config ->
                         case config.mode of
-                            DevelopmentMode ->
+                            Config.DevelopmentMode ->
                                 [ Html.map AlertListMsg (AlertList.view model.alertList) ]
 
                             _ ->
@@ -579,7 +452,7 @@ mainView model =
                                         Maybe.withDefault (Footer.html <| text "") <|
                                             flip Maybe.map
                                                 (List.Extra.find
-                                                    (\item -> item == FooterPlacement)
+                                                    (\item -> item == Config.FooterPlacement)
                                                     item.placement
                                                 )
                                                 (\_ ->
