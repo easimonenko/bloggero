@@ -1,5 +1,5 @@
 {
-    "version": "0.2.6",
+    "version": "0.2.7",
     "summary": "Bloggero -- engine for static blogs written in Elm with Material Design Light.",
     "repository": "https://github.com/easimonenko/bloggero-elm-mdl.git",
     "license": "MIT",

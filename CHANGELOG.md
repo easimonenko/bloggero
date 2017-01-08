@@ -1,5 +1,9 @@
 # Bloggero ChangeLog
 
+## 2017-01-08, Version 0.2.7
+
+* Add list of blogs (sites) using _Bloggero_.
+
 ## 2017-01-07, Version 0.2.6
 
 * Migrate back from MichaelCombs28/elm-mdl to debois/elm-mdl.
