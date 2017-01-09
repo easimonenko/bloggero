@@ -3,6 +3,9 @@ module Page.Breadcrumbs exposing (Model, Msg, init, update, view)
 import Dict
 import Html
 import Html.Attributes exposing (class, href)
+import List
+import List.Extra
+import String
 
 
 -- Bloggero modules
@@ -13,6 +16,7 @@ import Page.PageInfo as PageInfo
 type alias Model =
     { path : String
     , pageInfo : Dict.Dict String PageInfo.PageInfo
+    , paths : List String
     }
 
 
@@ -22,12 +26,20 @@ type Msg
 
 init : String -> ( Model, Cmd Msg )
 init path =
-    ( { path = path, pageInfo = Dict.empty }
-    , Cmd.batch
-        [ Cmd.map PageInfoMsg <| PageInfo.init "/home"
-        , Cmd.map PageInfoMsg <| PageInfo.init path
-        ]
-    )
+    let
+        paths =
+            path
+                |> String.split "/"
+                |> List.filter (not << String.isEmpty)
+                |> List.Extra.inits
+                |> List.drop 1
+                |> List.map (((++) "/") << (String.join "/"))
+                |> (::) "/home"
+    in
+        ( { path = path, pageInfo = Dict.empty, paths = paths }
+        , Cmd.batch <|
+            List.map (Cmd.map PageInfoMsg << PageInfo.init) paths
+        )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -49,39 +61,19 @@ update msg model =
 
 view : Model -> Html.Html Msg
 view model =
-    Html.ul [ class "breadcrumbs" ]
-        [ Html.li
-            []
-            [ Html.a
-                [ href "/#!/home" ]
-                [ Html.text <|
-                    Maybe.withDefault "Home" <|
-                        Maybe.map
-                            .title
-                            (Dict.get
-                                "/home"
-                                model.pageInfo
-                            )
-                ]
-            ]
-        , Html.li
-            []
-            [ Html.text <|
-                Maybe.withDefault "Unknown page title" <|
+    Html.ul [ class "breadcrumbs" ] <|
+        List.map
+            (\path ->
+                Maybe.withDefault (Html.text "") <|
                     Maybe.map
-                        .title
-                        (Dict.get
-                            model.path
-                            model.pageInfo
+                        (\pageInfo ->
+                            Html.li
+                                []
+                                [ Html.a
+                                    [ href <| "/#!" ++ path ]
+                                    [ Html.text pageInfo.title ]
+                                ]
                         )
-            ]
-        ]
-
-
-
---Maybe.withDefault (Html.text "") <|
---    Maybe.map
---        (\pageInfo ->
---             Html.text pageInfo.title
---        )
---        model.pageInfo
+                        (Dict.get path model.pageInfo)
+            )
+            model.paths
