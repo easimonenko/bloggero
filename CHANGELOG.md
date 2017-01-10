@@ -1,5 +1,15 @@
 # Bloggero ChangeLog
 
+## 2017-01-11, Version 0.2.8
+
+* Extracted Config.
+* :new: Customizable footer.
+* :checkered_flag: Finish with bread crumbs.
+* :bug: Fixed viewing of alerts.
+* Fixed part "Customizing" in README.
+* Removed unnecessary pages for HTTP errors in sample folder.
+* Few other minor changes.
+
 ## 2017-01-08, Version 0.2.7
 
 * Add list of blogs (sites) using _Bloggero_.
