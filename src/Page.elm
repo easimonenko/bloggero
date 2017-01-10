@@ -3,10 +3,7 @@ module Page exposing (Model, Msg(..), OutMsg(..), init, update, view)
 import Html
 import Html.Attributes exposing (class)
 import Http
-import Json.Decode exposing (..)
-import Json.Decode.Pipeline exposing (..)
 import Navigation
-import Task
 
 
 -- Material Design Lite modules
