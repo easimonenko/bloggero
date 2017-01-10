@@ -86,10 +86,9 @@ npm start -- --output=the_path_to_your_blog/app.js --dir=the_path_to_your_blog
 
 ## Customizing
 
-To configure the blog/website, edit the `package.json`. Pay special attention to
-what is in the directory `sample` is a example template. For your blog, copy
-those files to a new directory, and then edit the `package.json` to point to
-your new directory.
+Pay special attention to what is in the directory `sample` is a example
+template. For your blog, copy those files to a new directory, and then edit the
+`config.json` in appropriate directory to configure the blog/website.
 
 ## Alternative usage with Gulp
 
