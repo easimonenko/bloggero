@@ -27,7 +27,7 @@ init location =
         ( inPlaceAlert, inPlaceAlertCmds ) =
             Alert.InPlaceAlert.init
                 Alert.AlertLevel.InfoLevel
-                ("Loaded page " ++ (Utils.pagePath location))
+                ("Loading of page " ++ (Utils.pagePath location) ++ " ...")
     in
         ( { location = location, inPlaceAlert = inPlaceAlert }
         , Cmd.map InPlaceAlertMsg inPlaceAlertCmds

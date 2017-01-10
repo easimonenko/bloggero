@@ -30,9 +30,6 @@ import Page.PageInfoRefresh as PageInfoRefreshPage
 import Utils
 
 
---import Blog.PostPage
-
-
 type alias Model =
     { mdl : Material.Model
     , location : Navigation.Location
@@ -237,8 +234,21 @@ update msg model =
                                 , NoneOutMsg
                                 )
 
-                        _ ->
-                            ( model, Cmd.none, NoneOutMsg )
+                        error ->
+                            let
+                                alertLevel =
+                                    AlertLevel.DangerLevel
+
+                                errorInfo =
+                                    Utils.toHumanReadable error
+
+                                ( inPlaceAlertPage, inPlaceAlertPageCmds ) =
+                                    InPlaceAlertPage.init alertLevel errorInfo
+                            in
+                                ( { model | driverModel = InPlaceAlertPage inPlaceAlertPage }
+                                , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
+                                , AlertOutMsg alertLevel errorInfo
+                                )
 
                 PageInfo.BadJson path pageInfoJson errorInfo ->
                     let

@@ -227,7 +227,10 @@ update msg model =
                                     ( alertList, alertListCmds ) =
                                         AlertList.add model.alertList level info
                                 in
-                                    ( { model | page = Just updatedPage }
+                                    ( { model
+                                        | page = Just updatedPage
+                                        , alertList = alertList
+                                      }
                                     , Cmd.batch
                                         [ Cmd.map PageMsg pageCmds
                                         , Cmd.map AlertListMsg alertListCmds
