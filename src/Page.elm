@@ -105,7 +105,7 @@ update msg model =
                         "markdown" ->
                             let
                                 ( page, pageCmds ) =
-                                    MarkdownPage.init model.location
+                                    MarkdownPage.init model.location pageInfoJson
                             in
                                 ( { model
                                     | pageInfo = Just pageInfo
@@ -386,12 +386,17 @@ update msg model =
             case model.driverModel of
                 MarkdownPage page ->
                     let
-                        ( updatedPage, pageCmds ) =
+                        ( updatedPage, pageCmds, outMsg ) =
                             MarkdownPage.update markdownPageMsg page
                     in
                         ( { model | driverModel = MarkdownPage updatedPage }
                         , Cmd.map MarkdownPageMsg pageCmds
-                        , NoneOutMsg
+                        , case outMsg of
+                            MarkdownPage.NoneOutMsg ->
+                                NoneOutMsg
+
+                            MarkdownPage.AlertOutMsg level info ->
+                                AlertOutMsg level info
                         )
 
                 _ ->
