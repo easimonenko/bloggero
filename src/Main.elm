@@ -335,26 +335,25 @@ headerView model =
             Layout.title [] <|
                 Maybe.withDefault [ Html.text "" ] <|
                     flip Maybe.map
-                        model.sectionId
-                        (\sectionId ->
-                            Maybe.withDefault [ Html.text "" ] <|
-                                flip Maybe.map
-                                    model.config
-                                    (\config ->
-                                        [ text config.title
-                                        , span [ innerHtml "&nbsp;::&nbsp;" ] []
-                                        , Html.text <|
-                                            Maybe.withDefault "" <|
-                                                flip Maybe.map
-                                                    (List.Extra.find
-                                                        (\item -> item.id == sectionId)
-                                                        config.sections
-                                                    )
-                                                    (\section ->
-                                                        section.title
-                                                    )
-                                        ]
-                                    )
+                        model.config
+                        (\config ->
+                            (text config.title)
+                                :: (Maybe.withDefault [] <|
+                                        flip Maybe.map
+                                            model.sectionId
+                                            (\sectionId ->
+                                                [ span [ innerHtml "&nbsp;::&nbsp;" ] []
+                                                , Html.text <|
+                                                    Maybe.withDefault "" <|
+                                                        flip Maybe.map
+                                                            (List.Extra.find
+                                                                (\item -> item.id == sectionId)
+                                                                config.sections
+                                                            )
+                                                            .title
+                                                ]
+                                            )
+                                   )
                         )
     in
         [ div [ class "mdl-layout--large-screen-only" ]
