@@ -18,7 +18,6 @@ import Blog.BlogPage as BlogPage
 import Blog.PostPage as PostPage
 import Page.PageInfo as PageInfo
 import Page.Breadcrumbs as Breadcrumbs
-import Page.EmptyPlacePage as EmptyPlacePage
 import Page.HomePage as HomePage
 import Page.InPlaceAlertPage as InPlaceAlertPage
 import Page.HtmlPage as HtmlPage
@@ -38,7 +37,6 @@ type alias Model =
 
 type Driver
     = HomePage HomePage.Model
-    | EmptyPlacePage EmptyPlacePage.Model
     | InPlaceAlertPage InPlaceAlertPage.Model
     | PageInfoRefreshPage PageInfoRefreshPage.Model
     | HtmlPage HtmlPage.Model
@@ -52,7 +50,6 @@ type Msg
     | PageInfoMsg PageInfo.Msg
     | PageInfoRefreshMsg PageInfoRefreshPage.Msg
     | HomePageMsg HomePage.Msg
-    | EmptyPlacePageMsg EmptyPlacePage.Msg
     | InPlaceAlertPageMsg InPlaceAlertPage.Msg
     | HtmlPageMsg HtmlPage.Msg
     | MarkdownPageMsg MarkdownPage.Msg
@@ -69,11 +66,13 @@ type OutMsg
 init : Navigation.Location -> ( Model, Cmd Msg, OutMsg )
 init location =
     let
-        ( emptyPlacePage, emptyPlacePageCmds ) =
-            EmptyPlacePage.init location
-
         path =
             Utils.pagePath location
+
+        ( inPlaceAlertPage, inPlaceAlertPageCmds ) =
+            InPlaceAlertPage.init
+                AlertLevel.InfoLevel
+                ("Loading of page " ++ path ++ " ...")
 
         ( breadcrumbs, breadcrumbsCmds ) =
             Breadcrumbs.init path
@@ -82,11 +81,11 @@ init location =
           , location = location
           , pageInfo = Nothing
           , breadcrumbs = breadcrumbs
-          , driverModel = EmptyPlacePage emptyPlacePage
+          , driverModel = InPlaceAlertPage inPlaceAlertPage
           }
         , Cmd.batch
             [ Cmd.map PageInfoMsg (PageInfo.init path)
-            , Cmd.map EmptyPlacePageMsg emptyPlacePageCmds
+            , Cmd.map InPlaceAlertPageMsg inPlaceAlertPageCmds
             , Cmd.map BreadcrumbsMsg breadcrumbsCmds
             ]
         , NoneOutMsg
@@ -398,26 +397,11 @@ update msg model =
                 _ ->
                     ( model, Cmd.none, NoneOutMsg )
 
-        EmptyPlacePageMsg pageMsg ->
-            case model.driverModel of
-                EmptyPlacePage page ->
-                    let
-                        ( updatedPage, pageCmds ) =
-                            EmptyPlacePage.update pageMsg page
-                    in
-                        ( { model | driverModel = EmptyPlacePage updatedPage }
-                        , Cmd.map EmptyPlacePageMsg pageCmds
-                        , NoneOutMsg
-                        )
-
-                _ ->
-                    ( model, Cmd.none, NoneOutMsg )
-
 
 view : Model -> Html.Html Msg
 view model =
     Html.div [ class "page" ]
-        [ if (Utils.pagePath model.location) /= "/home" then
+        [ if (Utils.pagePath model.location) /= "/home" && (model.pageInfo /= Nothing) then
             Html.map BreadcrumbsMsg (Breadcrumbs.view model.breadcrumbs)
           else
             Html.text ""
@@ -426,11 +410,6 @@ view model =
                 Html.map
                     HomePageMsg
                     (HomePage.view page)
-
-            EmptyPlacePage page ->
-                Html.map
-                    EmptyPlacePageMsg
-                    (EmptyPlacePage.view page)
 
             InPlaceAlertPage page ->
                 Html.map
