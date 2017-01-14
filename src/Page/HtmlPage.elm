@@ -33,7 +33,6 @@ type Msg
     | PageInfoFetchFail Http.Error
     | PageContentFetchSucceed String
     | PageContentFetchFail Http.Error
-    | InPlaceAlertMsg InPlaceAlert.Msg
 
 
 defaultOptions : Options
@@ -93,29 +92,15 @@ update msg model =
 
                     Err error ->
                         let
-                            ( inPlaceAlert, inPlaceAlertCmds ) =
+                            inPlaceAlert =
                                 InPlaceAlert.init AlertLevel.DangerLevel error
                         in
                             ( { model | inPlaceAlert = Just inPlaceAlert }
-                            , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                            , Cmd.none
                             )
 
         PageContentFetchSucceed pageContent ->
             ( { model | content = pageContent }, Cmd.none )
-
-        InPlaceAlertMsg inPlaceAlertMsg ->
-            case model.inPlaceAlert of
-                Just inPlaceAlert ->
-                    let
-                        ( inPlaceAlertUpdated, inPlaceAlertCmds ) =
-                            InPlaceAlert.update inPlaceAlertMsg inPlaceAlert
-                    in
-                        ( { model | inPlaceAlert = Just inPlaceAlertUpdated }
-                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
-                        )
-
-                Nothing ->
-                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -124,11 +109,8 @@ update msg model =
 view : Model -> Html.Html Msg
 view model =
     Html.article []
-        [ case model.inPlaceAlert of
-            Just inPlaceAlert ->
-                Html.map InPlaceAlertMsg <| InPlaceAlert.view inPlaceAlert
-
-            Nothing ->
-                Html.text ""
+        [ model.inPlaceAlert
+            |> Maybe.map InPlaceAlert.view
+            |> Maybe.withDefault (Html.text "")
         , Markdown.toHtml [] model.content
         ]

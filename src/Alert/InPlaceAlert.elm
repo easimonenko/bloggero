@@ -1,4 +1,4 @@
-module Alert.InPlaceAlert exposing (Model, Msg, init, update, view)
+module Alert.InPlaceAlert exposing (Model, init, view)
 
 import Html exposing (..)
 import Html.Attributes exposing (class)
@@ -11,27 +11,14 @@ type alias Model =
     }
 
 
-type Msg
-    = NoneMsg
-
-
-init : AlertLevel.Level -> String -> ( Model, Cmd Msg )
+init : AlertLevel.Level -> String -> Model
 init level message =
-    ( { level = level
-      , message = message
-      }
-    , Cmd.none
-    )
+    { level = level
+    , message = message
+    }
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    ( model
-    , Cmd.none
-    )
-
-
-view : Model -> Html Msg
+view : Model -> Html msg
 view model =
     let
         level =

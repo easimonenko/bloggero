@@ -53,7 +53,6 @@ type Msg
     | LocationChange Navigation.Location
     | SnackbarMsg (Snackbar.Msg ())
     | AlertListMsg AlertList.Msg
-    | InPlaceAlertMsg InPlaceAlert.Msg
     | PageMsg Page.Msg
     | HideDrawer
     | ConfigMsg Config.Msg
@@ -83,7 +82,7 @@ init location =
         ( alertList, alertListCmds ) =
             AlertList.init
 
-        ( inPlaceAlert, inPlaceAlertCmds ) =
+        inPlaceAlert =
             InPlaceAlert.init AlertLevel.InfoLevel "Loading of config..."
 
         model =
@@ -194,20 +193,6 @@ update msg model =
                     AlertList.update alertListMsg model.alertList
             in
                 ( { model | alertList = updatedAlertList }, Cmd.map AlertListMsg alertListCmds )
-
-        InPlaceAlertMsg msg ->
-            case model.inPlaceAlert of
-                Just inPlaceAlert ->
-                    let
-                        ( updatedInPlaceAlert, inPlaceAlertCmds ) =
-                            InPlaceAlert.update msg inPlaceAlert
-                    in
-                        ( { model | inPlaceAlert = Just updatedInPlaceAlert }
-                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
-                        )
-
-                Nothing ->
-                    ( model, Cmd.none )
 
         PageMsg pageMsg ->
             case model.page of
@@ -521,14 +506,12 @@ footerView model =
 pageView : Model -> Grid.Cell Msg
 pageView model =
     Grid.cell [ Grid.size All 8, Grid.offset Desktop 2, Elevation.e3 ]
-        [ Maybe.withDefault (text "") <|
-            flip Maybe.map
-                model.inPlaceAlert
-                (\inPlaceAlert -> Html.map InPlaceAlertMsg (InPlaceAlert.view inPlaceAlert))
-        , Maybe.withDefault (text "") <|
-            flip Maybe.map
-                model.page
-                (\page -> Html.map PageMsg (Page.view page))
+        [ model.inPlaceAlert
+            |> Maybe.map InPlaceAlert.view
+            |> Maybe.withDefault (Html.text "")
+        , model.page
+            |> Maybe.map (\page -> Html.map PageMsg (Page.view page))
+            |> Maybe.withDefault (Html.text "")
         ]
 
 

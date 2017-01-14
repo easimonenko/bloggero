@@ -24,9 +24,7 @@ import Link
 
 
 type alias Model =
-    { --mdl : Material.Model
-      --, root : String
-      root : String
+    { root : String
     , title : String
     , postIds : List String
     , postListLinks : Dict String Link.Model
@@ -35,12 +33,9 @@ type alias Model =
 
 
 type Msg
-    = --Mdl (Material.Msg Msg)
-      -- | BlogConfigFetchFail Http.Error
-      BlogConfigFetchFail Http.Error
+    = BlogConfigFetchFail Http.Error
     | BlogConfigFetchSucceed String
     | LinkMsg String Link.Msg
-    | InPlaceAlertMsg InPlaceAlert.Msg
 
 
 type OutMsg
@@ -56,9 +51,7 @@ type alias PostListConfig =
 
 init : PostListConfig -> ( Model, Cmd Msg, OutMsg )
 init config =
-    ( { --mdl = Material.model
-        --, root = config.root
-        root = config.root
+    ( { root = config.root
       , title = config.title
       , postIds = []
       , postListLinks = Dict.empty
@@ -131,21 +124,21 @@ update msg model =
 
                     Err info ->
                         let
-                            ( inPlaceAlert, inPlaceAlertCmds ) =
+                            inPlaceAlert =
                                 InPlaceAlert.init AlertLevel.DangerLevel info
                         in
                             ( { model | inPlaceAlert = Just inPlaceAlert }
-                            , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                            , Cmd.none
                             , AlertOutMsg AlertLevel.DangerLevel info
                             )
 
         BlogConfigFetchFail error ->
             let
-                ( inPlaceAlert, inPlaceAlertCmds ) =
+                inPlaceAlert =
                     InPlaceAlert.init AlertLevel.DangerLevel "Http Error"
             in
                 ( { model | inPlaceAlert = Just inPlaceAlert }
-                , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                , Cmd.none
                 , AlertOutMsg AlertLevel.DangerLevel "Http Error"
                 )
 
@@ -176,9 +169,6 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none, NoneOutMsg )
 
-        _ ->
-            ( model, Cmd.none, NoneOutMsg )
-
 
 view : Model -> Html Msg
 view model =
@@ -203,4 +193,4 @@ view model =
                 ]
 
         Just inPlaceAlert ->
-            Html.map InPlaceAlertMsg (InPlaceAlert.view inPlaceAlert)
+            InPlaceAlert.view inPlaceAlert

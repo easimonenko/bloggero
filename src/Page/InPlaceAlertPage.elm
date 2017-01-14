@@ -13,34 +13,28 @@ type alias Model =
     { inPlaceAlert : InPlaceAlert.Model }
 
 
-type Msg
-    = InPlaceAlertMsg InPlaceAlert.Msg
+type alias Msg =
+    ()
 
 
 init : AlertLevel.Level -> String -> ( Model, Cmd Msg )
 init level message =
     let
-        ( inPlaceAlert, inPlaceAlertCmds ) =
+        inPlaceAlert =
             InPlaceAlert.init level message
     in
         ( { inPlaceAlert = inPlaceAlert }
-        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+        , Cmd.none
         )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        InPlaceAlertMsg inPlaceAlertMsg ->
-            let
-                ( inPlaceAlert, inPlaceAlertCmds ) =
-                    InPlaceAlert.update inPlaceAlertMsg model.inPlaceAlert
-            in
-                ( { model | inPlaceAlert = inPlaceAlert }
-                , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
-                )
+        _ ->
+            ( model, Cmd.none )
 
 
 view : Model -> Html Msg
 view model =
-    Html.map InPlaceAlertMsg (InPlaceAlert.view model.inPlaceAlert)
+    InPlaceAlert.view model.inPlaceAlert

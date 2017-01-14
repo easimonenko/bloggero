@@ -21,7 +21,6 @@ type alias Model =
 
 type Msg
     = PageInfoMsg PageInfo.Msg
-    | InPlaceAlertMsg InPlaceAlert.Msg
 
 
 init : String -> ( Model, Cmd Msg )
@@ -43,37 +42,23 @@ update msg model =
 
                 PageInfo.BadJson path pageInfoJson errorInfo ->
                     let
-                        ( inPlaceAlert, inPlaceAlertCmds ) =
+                        inPlaceAlert =
                             InPlaceAlert.init AlertLevel.DangerLevel errorInfo
                     in
                         ( { model | inPlaceAlert = Just inPlaceAlert }
-                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                        , Cmd.none
                         )
 
                 PageInfo.FetchFail path httpError ->
                     let
-                        ( inPlaceAlert, inPlaceAlertCmds ) =
+                        inPlaceAlert =
                             InPlaceAlert.init
                                 AlertLevel.DangerLevel
                                 (Utils.toHumanReadable httpError)
                     in
                         ( { model | inPlaceAlert = Just inPlaceAlert }
-                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                        , Cmd.none
                         )
-
-        InPlaceAlertMsg inPlaceAlertMsg ->
-            case model.inPlaceAlert of
-                Just inPlaceAlert ->
-                    let
-                        ( inPlaceAlertUpdated, inPlaceAlertCmds ) =
-                            InPlaceAlert.update inPlaceAlertMsg inPlaceAlert
-                    in
-                        ( { model | inPlaceAlert = Just inPlaceAlertUpdated }
-                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
-                        )
-
-                Nothing ->
-                    ( model, Cmd.none )
 
 
 view : Model -> Html.Html Msg
@@ -83,4 +68,4 @@ view model =
             Html.a [ href <| "/#!" ++ model.pagePath ] [ Html.text model.pageTitle ]
 
         Just inPlaceAlert ->
-            Html.map InPlaceAlertMsg (InPlaceAlert.view inPlaceAlert)
+            InPlaceAlert.view inPlaceAlert

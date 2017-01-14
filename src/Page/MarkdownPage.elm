@@ -31,7 +31,6 @@ type alias Options =
 type Msg
     = PageContentFetchSucceed String
     | PageContentFetchFail Http.Error
-    | InPlaceAlertMsg InPlaceAlert.Msg
 
 
 type OutMsg
@@ -47,7 +46,7 @@ defaultOptions =
 init : Navigation.Location -> String -> ( Model, Cmd Msg )
 init location json =
     let
-        ( inPlaceAlert, inPlaceAlertCmds ) =
+        inPlaceAlert =
             InPlaceAlert.init AlertLevel.InfoLevel "Page content loading ..."
 
         model =
@@ -81,17 +80,16 @@ init location json =
                                 (Utils.pagePath model.location)
                                     ++ "/index.markdown"
                         )
-                    , Cmd.map InPlaceAlertMsg <| inPlaceAlertCmds
                     ]
                 )
 
             Err error ->
                 let
-                    ( inPlaceAlert, inPlaceAlertCmds ) =
+                    inPlaceAlert =
                         InPlaceAlert.init AlertLevel.DangerLevel error
                 in
                     ( { model | inPlaceAlert = Just inPlaceAlert }
-                    , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                    , Cmd.none
                     )
 
 
@@ -101,11 +99,14 @@ update msg model =
         PageContentFetchSucceed pageContent ->
             if String.isEmpty pageContent then
                 let
-                    ( inPlaceAlert, inPlaceAlertCmds ) =
+                    inPlaceAlert =
                         InPlaceAlert.init AlertLevel.WarningLevel "Page content is empty."
                 in
-                    ( { model | content = Just pageContent, inPlaceAlert = Just inPlaceAlert }
-                    , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                    ( { model
+                        | content = Just pageContent
+                        , inPlaceAlert = Just inPlaceAlert
+                      }
+                    , Cmd.none
                     , NoneOutMsg
                     )
             else
@@ -116,28 +117,13 @@ update msg model =
 
         PageContentFetchFail httpError ->
             let
-                ( inPlaceAlert, inPlaceAlertCmds ) =
+                inPlaceAlert =
                     InPlaceAlert.init AlertLevel.DangerLevel "Page content not found."
             in
                 ( { model | inPlaceAlert = Just inPlaceAlert }
-                , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                , Cmd.none
                 , AlertOutMsg AlertLevel.DangerLevel <| Utils.toHumanReadable httpError
                 )
-
-        InPlaceAlertMsg inPlaceAlertMsg ->
-            case model.inPlaceAlert of
-                Just inPlaceAlert ->
-                    let
-                        ( inPlaceAlertUpdated, inPlaceAlertCmds ) =
-                            InPlaceAlert.update inPlaceAlertMsg inPlaceAlert
-                    in
-                        ( { model | inPlaceAlert = Just inPlaceAlertUpdated }
-                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
-                        , NoneOutMsg
-                        )
-
-                Nothing ->
-                    ( model, Cmd.none, NoneOutMsg )
 
 
 view : Model -> Html.Html Msg
@@ -146,7 +132,7 @@ view model =
         [ Maybe.withDefault (Html.text "") <|
             flip Maybe.map
                 model.inPlaceAlert
-                (Html.map InPlaceAlertMsg << InPlaceAlert.view)
+                InPlaceAlert.view
         , Maybe.withDefault (Html.text "") <|
             flip Maybe.map
                 model.content

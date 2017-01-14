@@ -42,7 +42,6 @@ type Msg
     | PageInfoFetchFail Http.Error
     | PageContentFetchSucceed String RawContentType
     | PageContentFetchFail Http.Error RawContentType
-    | InPlaceAlertMsg InPlaceAlert.Msg
 
 
 type RawContentType
@@ -55,7 +54,7 @@ type RawContentType
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
     let
-        ( inPlaceAlert, inPlaceAlertCmds ) =
+        inPlaceAlert =
             InPlaceAlert.init
                 AlertLevel.InfoLevel
                 ("Loading post page [" ++ (Utils.pagePath location) ++ "] ...")
@@ -67,10 +66,7 @@ init location =
           , rawContentType = UnknownContentType
           , inPlaceAlert = Just inPlaceAlert
           }
-        , Cmd.batch
-            [ Cmd.map PageInfoMsg <| PageInfo.init (Utils.pagePath location)
-            , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
-            ]
+        , Cmd.map PageInfoMsg <| PageInfo.init (Utils.pagePath location)
         )
 
 
@@ -151,34 +147,34 @@ update msg model =
 
                             Err error ->
                                 let
-                                    ( inPlaceAlert, inPlaceAlertCmds ) =
+                                    inPlaceAlert =
                                         InPlaceAlert.init AlertLevel.DangerLevel error
                                 in
                                     ( { model
                                         | pageInfo = Just pageInfo
                                         , inPlaceAlert = Just inPlaceAlert
                                       }
-                                    , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                                    , Cmd.none
                                     )
 
                 PageInfo.BadJson path pageInfoJson errorInfo ->
                     let
-                        ( inPlaceAlert, inPlaceAlertCmds ) =
+                        inPlaceAlert =
                             InPlaceAlert.init AlertLevel.DangerLevel errorInfo
                     in
                         ( { model | inPlaceAlert = Just inPlaceAlert }
-                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                        , Cmd.none
                         )
 
                 PageInfo.FetchFail path httpError ->
                     let
-                        ( inPlaceAlert, inPlaceAlertCmds ) =
+                        inPlaceAlert =
                             InPlaceAlert.init
                                 AlertLevel.DangerLevel
                                 (Utils.toHumanReadable httpError)
                     in
                         ( { model | inPlaceAlert = Just inPlaceAlert }
-                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                        , Cmd.none
                         )
 
         PageContentFetchSucceed pageContent contentType ->
@@ -201,24 +197,24 @@ update msg model =
                             case otherContentType of
                                 FailContentType ->
                                     let
-                                        ( inPlaceAlert, inPlaceAlertCmds ) =
+                                        inPlaceAlert =
                                             InPlaceAlert.init
                                                 AlertLevel.DangerLevel
                                                 "Page content fetch fail: content file not found."
                                     in
                                         ( { model | inPlaceAlert = Just inPlaceAlert }
-                                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                                        , Cmd.none
                                         )
 
                                 UnknownContentType ->
                                     let
-                                        ( inPlaceAlert, inPlaceAlertCmds ) =
+                                        inPlaceAlert =
                                             InPlaceAlert.init
                                                 AlertLevel.DangerLevel
                                                 "Page content fetch fail: internal error."
                                     in
                                         ( { model | inPlaceAlert = Just inPlaceAlert }
-                                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                                        , Cmd.none
                                         )
 
                                 _ ->
@@ -227,7 +223,7 @@ update msg model =
                                     )
                     else
                         let
-                            ( inPlaceAlert, inPlaceAlertCmds ) =
+                            inPlaceAlert =
                                 InPlaceAlert.init
                                     AlertLevel.DangerLevel
                                     ("Page content fetch: ["
@@ -237,33 +233,19 @@ update msg model =
                                     )
                         in
                             ( { model | inPlaceAlert = Just inPlaceAlert }
-                            , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                            , Cmd.none
                             )
 
                 _ ->
                     let
-                        ( inPlaceAlert, inPlaceAlertCmds ) =
+                        inPlaceAlert =
                             InPlaceAlert.init
                                 AlertLevel.DangerLevel
                                 ("Page content fetch error.")
                     in
                         ( { model | inPlaceAlert = Just inPlaceAlert }
-                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
+                        , Cmd.none
                         )
-
-        InPlaceAlertMsg inPlaceAlertMsg ->
-            case model.inPlaceAlert of
-                Just inPlaceAlert ->
-                    let
-                        ( inPlaceAlertUpdated, inPlaceAlertCmds ) =
-                            InPlaceAlert.update inPlaceAlertMsg inPlaceAlert
-                    in
-                        ( { model | inPlaceAlert = Just inPlaceAlertUpdated }
-                        , Cmd.map InPlaceAlertMsg inPlaceAlertCmds
-                        )
-
-                Nothing ->
-                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -274,9 +256,7 @@ view model =
     Html.div []
         [ Maybe.withDefault (Html.text "") <|
             Maybe.map
-                (\inPlaceAlert ->
-                    Html.map InPlaceAlertMsg <| InPlaceAlert.view inPlaceAlert
-                )
+                InPlaceAlert.view
                 model.inPlaceAlert
         , Maybe.withDefault (Html.text "") <|
             Maybe.map
