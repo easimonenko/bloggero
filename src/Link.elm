@@ -36,9 +36,18 @@ update msg model =
         PageInfoMsg msg ->
             case PageInfo.update msg of
                 PageInfo.Success path pageInfoJson pageInfo ->
-                    ( { model | pageTitle = pageInfo.title }
-                    , Cmd.none
-                    )
+                    if String.isEmpty pageInfo.title then
+                        ( { model
+                            | inPlaceAlert =
+                                Just <|
+                                    InPlaceAlert.init AlertLevel.WarningLevel "Page title is empty."
+                          }
+                        , Cmd.none
+                        )
+                    else
+                        ( { model | pageTitle = pageInfo.title }
+                        , Cmd.none
+                        )
 
                 PageInfo.BadJson path pageInfoJson errorInfo ->
                     let
