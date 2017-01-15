@@ -20,6 +20,14 @@
       ]
     },
     {
+      "id": "news",
+      "title": "News",
+      "route": "/news",
+      "placement": [
+        "header", "drawer", "footer", "sitemap"
+      ]
+    },
+    {
       "id": "about",
       "title": "About",
       "route": "/about",
@@ -41,9 +49,12 @@
     }
   ],
   "modules": [
-    {
-      "name": "blog",
-      "root": "/blog"
-    }
-  ]
+    "blog", "news"
+  ],
+  "blog": {
+    "root": "/blog"
+  },
+  "news": {
+    "root": "/news"
+  }
 }

@@ -1,0 +1,8 @@
+{
+  "title": "The news section is in development",
+  "driver": "news",
+  "news": {
+      "author": "Ivan I. Ivanov",
+      "date": "2017-01-16 00:15"
+  }
+}
