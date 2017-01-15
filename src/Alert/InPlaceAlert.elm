@@ -20,26 +20,8 @@ init level message =
 
 view : Model -> Html msg
 view model =
-    let
-        level =
-            case model.level of
-                AlertLevel.SuccessLevel ->
-                    "success"
-
-                AlertLevel.InfoLevel ->
-                    "info"
-
-                AlertLevel.WarningLevel ->
-                    "warning"
-
-                AlertLevel.DangerLevel ->
-                    "danger"
-
-                AlertLevel.NoneLevel ->
-                    "none"
-    in
-        div [ class "alert" ]
-            [ p [ class ("alert-" ++ level) ]
-                [ text model.message
-                ]
+    div [ class "alert" ]
+        [ p [ class <| AlertLevel.toCSSClassName model.level ]
+            [ text model.message
             ]
+        ]

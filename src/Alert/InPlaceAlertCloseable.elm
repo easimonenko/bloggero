@@ -53,34 +53,16 @@ update msg model =
 
 view : Model -> Html.Html Msg
 view model =
-    let
-        level =
-            case model.level of
-                AlertLevel.SuccessLevel ->
-                    "success"
-
-                AlertLevel.InfoLevel ->
-                    "info"
-
-                AlertLevel.WarningLevel ->
-                    "warning"
-
-                AlertLevel.DangerLevel ->
-                    "danger"
-
-                AlertLevel.NoneLevel ->
-                    "none"
-    in
-        if not model.closed then
-            Html.div [ class "alert" ]
-                [ Html.p [ class ("alert-" ++ level) ]
-                    [ Html.text model.message
-                    , Button.render Mdl
-                        [ 0 ]
-                        model.mdl
-                        [ Button.icon, MdlOptions.onClick AlertClose ]
-                        [ Icon.i "close" ]
-                    ]
+    if not model.closed then
+        Html.div [ class "alert" ]
+            [ Html.p [ class <| AlertLevel.toCSSClassName model.level ]
+                [ Html.text model.message
+                , Button.render Mdl
+                    [ 0 ]
+                    model.mdl
+                    [ Button.icon, MdlOptions.onClick AlertClose ]
+                    [ Icon.i "close" ]
                 ]
-        else
-            Html.text ""
+            ]
+    else
+        Html.text ""

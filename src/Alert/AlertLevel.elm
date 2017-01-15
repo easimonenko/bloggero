@@ -1,4 +1,4 @@
-module Alert.AlertLevel exposing (Level(..))
+module Alert.AlertLevel exposing (Level(..), toCSSClassName)
 
 
 type Level
@@ -7,3 +7,23 @@ type Level
     | WarningLevel
     | DangerLevel
     | NoneLevel
+
+
+toCSSClassName : Level -> String
+toCSSClassName level =
+    "alert-"
+        ++ case level of
+            SuccessLevel ->
+                "success"
+
+            InfoLevel ->
+                "info"
+
+            WarningLevel ->
+                "warning"
+
+            DangerLevel ->
+                "danger"
+
+            NoneLevel ->
+                "none"

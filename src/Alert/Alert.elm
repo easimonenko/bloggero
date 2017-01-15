@@ -1,11 +1,19 @@
 module Alert.Alert exposing (Model, Msg(..), init, update, view)
 
 import Html exposing (..)
+
+
+-- Material Design Lite modules
+
 import Material
 import Material.Button as Button
 import Material.Icon as Icon
 import Material.List as MdlList
 import Material.Options as MdlOptions
+
+
+-- Bloggero modules
+
 import Alert.AlertLevel as AlertLevel
 
 
@@ -42,31 +50,13 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    let
-        alertLevel level =
-            case level of
-                AlertLevel.SuccessLevel ->
-                    "success"
-
-                AlertLevel.InfoLevel ->
-                    "info"
-
-                AlertLevel.WarningLevel ->
-                    "warning"
-
-                AlertLevel.DangerLevel ->
-                    "danger"
-
-                AlertLevel.NoneLevel ->
-                    "none"
-    in
-        MdlList.li [ MdlOptions.cs <| "alert-" ++ (alertLevel model.level) ]
-            [ MdlList.content [] [ text model.message ]
-            , MdlList.content2 []
-                [ Button.render Mdl
-                    [ 0 ]
-                    model.mdl
-                    [ Button.icon, MdlOptions.onClick (AlertClose model.id) ]
-                    [ Icon.i "close" ]
-                ]
+    MdlList.li [ MdlOptions.cs <| AlertLevel.toCSSClassName model.level ]
+        [ MdlList.content [] [ text model.message ]
+        , MdlList.content2 []
+            [ Button.render Mdl
+                [ 0 ]
+                model.mdl
+                [ Button.icon, MdlOptions.onClick (AlertClose model.id) ]
+                [ Icon.i "close" ]
             ]
+        ]
