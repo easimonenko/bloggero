@@ -1,7 +1,6 @@
 module Page.HomePage exposing (Model, Msg, Config, init, update, view, defaultConfig)
 
-import Html exposing (..)
-import Tuple exposing (..)
+import Html
 
 
 -- Material Design Lite modules
@@ -13,17 +12,21 @@ import Material
 
 import Alert.AlertLevel as AlertLevel
 import Blog.PostList as PostList
+import News.NewsList as NewsList
+import Utils
 
 
 type alias Model =
     { postList : PostList.Model
-    , title : String
+    , newsList : NewsList.Model
+    , config : Config
     , mdl : Material.Model
     }
 
 
 type Msg
     = PostListMsg PostList.Msg
+    | NewsListMsg NewsList.Msg
     | Mdl (Material.Msg Msg)
 
 
@@ -33,9 +36,23 @@ type OutMsg
 
 
 type alias Config =
-    { root : String
+    { root : Path
     , title : String
-    , blogRoot : String
+    , blogRoot : Path
+    , newsRoot : Path
+    }
+
+
+type alias Path =
+    String
+
+
+defaultConfig : Config
+defaultConfig =
+    { title = "Home"
+    , root = "/home"
+    , blogRoot = "/blog"
+    , newsRoot = "/news"
     }
 
 
@@ -44,10 +61,17 @@ init config =
     let
         ( postList, postListCmds, postListOutMsg ) =
             let
-                defaultConfig =
+                postListDefaultConfig =
                     PostList.defaultConfig
             in
-                PostList.init { defaultConfig | root = config.blogRoot }
+                PostList.init { postListDefaultConfig | root = config.blogRoot }
+
+        ( newsList, newsListCmds ) =
+            let
+                newsListDefaultConfig =
+                    NewsList.defaultConfig
+            in
+                NewsList.init { newsListDefaultConfig | root = config.newsRoot }
 
         outMsg =
             case postListOutMsg of
@@ -57,23 +81,13 @@ init config =
                 PostList.AlertOutMsg level message ->
                     AlertOutMsg level message
     in
-        ( { postList = postList, title = config.title, mdl = Material.model }
-        , Cmd.map PostListMsg postListCmds
+        ( { postList = postList, newsList = newsList, config = config, mdl = Material.model }
+        , Cmd.batch
+            [ Cmd.map PostListMsg postListCmds
+            , Cmd.map NewsListMsg newsListCmds
+            ]
         , outMsg
         )
-
-
-defaultConfig : Config
-defaultConfig =
-    { title = "Home"
-    , root = "/home"
-    , blogRoot = "/blog"
-    }
-
-
-tuple2triple : ( a, b ) -> c -> ( a, b, c )
-tuple2triple t v =
-    ( first t, second t, v )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, OutMsg )
@@ -92,15 +106,29 @@ update msg model =
                         PostList.AlertOutMsg level message ->
                             AlertOutMsg level message
             in
-                ( { model | postList = postList }, Cmd.map PostListMsg postListCmds, outMsg )
+                ( { model | postList = postList }
+                , Cmd.map PostListMsg postListCmds
+                , outMsg
+                )
+
+        NewsListMsg newsListMsg ->
+            let
+                ( newsList, newsListCmds ) =
+                    NewsList.update newsListMsg model.newsList
+            in
+                ( { model | newsList = newsList }
+                , Cmd.map NewsListMsg newsListCmds
+                , NoneOutMsg
+                )
 
         Mdl mdlMsg ->
-            tuple2triple (Material.update Mdl mdlMsg model) NoneOutMsg
+            Utils.tuple2triple (Material.update Mdl mdlMsg model) NoneOutMsg
 
 
-view : Model -> Html Msg
+view : Model -> Html.Html Msg
 view model =
-    div []
-        [ h1 [] [ text model.title ]
-        , Html.map PostListMsg (PostList.view model.postList)
+    Html.div []
+        [ Html.h1 [] [ Html.text model.config.title ]
+        , Html.map NewsListMsg <| NewsList.view model.newsList
+        , Html.map PostListMsg <| PostList.view model.postList
         ]
