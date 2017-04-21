@@ -16,6 +16,7 @@ import Material
 import Alert.AlertLevel as AlertLevel
 import Blog.BlogPage as BlogPage
 import Blog.PostPage as PostPage
+import News.NewsPage as NewsPage
 import News.NewsSectionPage as NewsSectionPage
 import Page.PageInfo as PageInfo
 import Page.Breadcrumbs as Breadcrumbs
@@ -45,6 +46,7 @@ type Driver
     | BlogPage BlogPage.Model
     | PostPage PostPage.Model
     | NewsSectionPage NewsSectionPage.Model
+    | NewsPage NewsPage.Model
 
 
 type Msg
@@ -58,6 +60,7 @@ type Msg
     | BlogPageMsg BlogPage.Msg
     | PostPageMsg PostPage.Msg
     | NewsSectionPageMsg NewsSectionPage.Msg
+    | NewsPageMsg NewsPage.Msg
     | BreadcrumbsMsg Breadcrumbs.Msg
 
 
@@ -201,6 +204,21 @@ update msg model =
                                 , AlertOutMsg
                                     AlertLevel.InfoLevel
                                     "PageInfoFetchSucceed: driver = news-section"
+                                )
+
+                        "news" ->
+                            let
+                                ( page, pageCmds ) =
+                                    NewsPage.init model.location
+                            in
+                                ( { model
+                                    | pageInfo = Just pageInfo
+                                    , driverModel = NewsPage page
+                                  }
+                                , Cmd.map NewsPageMsg pageCmds
+                                , AlertOutMsg
+                                    AlertLevel.InfoLevel
+                                    "PageInfoFetchSucceed: driver = news"
                                 )
 
                         unknownType ->
@@ -440,6 +458,26 @@ update msg model =
                 _ ->
                     ( model, Cmd.none, NoneOutMsg )
 
+        NewsPageMsg pageMsg ->
+            case model.driverModel of
+                NewsPage page ->
+                    let
+                        ( updatedPage, pageCmds, outMsg ) =
+                            NewsPage.update pageMsg page
+                    in
+                        ( { model | driverModel = NewsPage updatedPage }
+                        , Cmd.map NewsPageMsg pageCmds
+                        , case outMsg of
+                            NewsPage.NoneOutMsg ->
+                                NoneOutMsg
+
+                            NewsPage.AlertOutMsg level info ->
+                                AlertOutMsg level info
+                        )
+
+                _ ->
+                    ( model, Cmd.none, NoneOutMsg )
+
 
 view : Model -> Html.Html Msg
 view model =
@@ -488,4 +526,7 @@ view model =
                 Html.map
                     NewsSectionPageMsg
                     (NewsSectionPage.view page)
+
+            NewsPage page ->
+                Html.map NewsPageMsg <| NewsPage.view page
         ]
