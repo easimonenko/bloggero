@@ -19,7 +19,7 @@ import Utils
 type alias Model =
     { location : Navigation.Location
     , options : Options
-    , content : String
+    , content : Maybe String
     , inPlaceAlert : Maybe InPlaceAlert.Model
     }
 
@@ -42,11 +42,15 @@ defaultOptions =
 
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
-    ( { location = location
-      , options = defaultOptions
-      , content = ""
-      , inPlaceAlert = Nothing
-      }
+    ( let
+        inPlaceAlert =
+            InPlaceAlert.init AlertLevel.InfoLevel "Page content loading ..."
+      in
+        { location = location
+        , options = defaultOptions
+        , content = Nothing
+        , inPlaceAlert = Just inPlaceAlert
+        }
     , Task.attempt
         (\result ->
             case result of
@@ -100,7 +104,7 @@ update msg model =
                             )
 
         PageContentFetchSucceed pageContent ->
-            ( { model | content = pageContent }, Cmd.none )
+            ( { model | content = Just pageContent }, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -112,5 +116,7 @@ view model =
         [ model.inPlaceAlert
             |> Maybe.map InPlaceAlert.view
             |> Maybe.withDefault (Html.text "")
-        , Markdown.toHtml [] model.content
+        , model.content
+            |> Maybe.map (Markdown.toHtml [])
+            |> Maybe.withDefault (Html.text "")
         ]
