@@ -129,12 +129,10 @@ update msg model =
 view : Model -> Html.Html Msg
 view model =
     Html.article []
-        [ Maybe.withDefault (Html.text "") <|
-            flip Maybe.map
-                model.inPlaceAlert
-                InPlaceAlert.view
-        , Maybe.withDefault (Html.text "") <|
-            flip Maybe.map
-                model.content
-                (Markdown.toHtml [])
+        [ model.inPlaceAlert
+            |> Maybe.map InPlaceAlert.view
+            |> Maybe.withDefault (Html.text "")
+        , model.content
+            |> Maybe.map (Markdown.toHtml [])
+            |> Maybe.withDefault (Html.text "")
         ]
