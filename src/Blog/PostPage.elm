@@ -38,8 +38,6 @@ type alias PostInfo =
 
 type Msg
     = PageInfoMsg PageInfo.Msg
-    | PageInfoFetchSucceed String
-    | PageInfoFetchFail Http.Error
     | PageContentFetchSucceed String RawContentType
     | PageContentFetchFail Http.Error RawContentType
 
@@ -54,10 +52,13 @@ type RawContentType
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
     let
+        path =
+            Utils.pagePath location
+
         inPlaceAlert =
             InPlaceAlert.init
                 AlertLevel.InfoLevel
-                ("Loading post page [" ++ (Utils.pagePath location) ++ "] ...")
+                ("Loading post page [" ++ path ++ "] ...")
     in
         ( { location = location
           , pageInfo = Nothing
@@ -66,7 +67,7 @@ init location =
           , rawContentType = UnknownContentType
           , inPlaceAlert = Just inPlaceAlert
           }
-        , Cmd.map PageInfoMsg <| PageInfo.init (Utils.pagePath location)
+        , Cmd.map PageInfoMsg <| PageInfo.init path
         )
 
 
@@ -86,6 +87,7 @@ nextContentType contentType =
             FailContentType
 
 
+loadContentType : Model -> RawContentType -> Cmd Msg
 loadContentType model contentType =
     let
         extension =
@@ -246,9 +248,6 @@ update msg model =
                         ( { model | inPlaceAlert = Just inPlaceAlert }
                         , Cmd.none
                         )
-
-        _ ->
-            ( model, Cmd.none )
 
 
 view : Model -> Html.Html Msg
