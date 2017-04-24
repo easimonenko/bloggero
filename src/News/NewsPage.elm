@@ -1,7 +1,9 @@
 module News.NewsPage exposing (Model, Msg, OutMsg(..), init, update, view)
 
 import Html
+import Html.Attributes exposing (..)
 import Http
+import Json.Decode exposing (..)
 import Markdown
 import Maybe.Extra
 import Navigation
@@ -20,6 +22,7 @@ type alias Model =
     { inPlaceAlert : Maybe InPlaceAlert.Model
     , location : Navigation.Location
     , pageInfo : Maybe PageInfo.PageInfo
+    , newsInfo : Maybe NewsInfo
     , content : Maybe String
     }
 
@@ -55,6 +58,7 @@ init location =
         ( { inPlaceAlert = Just inPlaceAlert
           , location = location
           , pageInfo = Nothing
+          , newsInfo = Nothing
           , content = Nothing
           }
         , Cmd.map PageInfoMsg <| PageInfo.init path
@@ -85,10 +89,38 @@ update msg model =
         PageInfoMsg pageInfoMsg ->
             case PageInfo.update pageInfoMsg of
                 PageInfo.Success path pageInfoJson pageInfo ->
-                    ( { model | pageInfo = Just pageInfo }
-                    , loadContent model
-                    , NoneOutMsg
-                    )
+                    let
+                        newsDecoder =
+                            maybe
+                                (field "news"
+                                    (map2 NewsInfo
+                                        (maybe (field "author" string))
+                                        (maybe (field "date" string))
+                                    )
+                                )
+                    in
+                        case decodeString newsDecoder pageInfoJson of
+                            Ok newsInfo ->
+                                ( { model
+                                    | pageInfo = Just pageInfo
+                                    , newsInfo = newsInfo
+                                  }
+                                , loadContent model
+                                , NoneOutMsg
+                                )
+
+                            Err error ->
+                                let
+                                    inPlaceAlert =
+                                        InPlaceAlert.init AlertLevel.DangerLevel error
+                                in
+                                    ( { model
+                                        | pageInfo = Just pageInfo
+                                        , inPlaceAlert = Just inPlaceAlert
+                                      }
+                                    , Cmd.none
+                                    , NoneOutMsg
+                                    )
 
                 PageInfo.BadJson path pageInfoJson errorInfo ->
                     let
@@ -164,6 +196,35 @@ view model =
     Html.div []
         [ model.inPlaceAlert
             |> Maybe.Extra.unwrap (Html.text "") InPlaceAlert.view
+        , model.newsInfo
+            |> Maybe.map
+                (\newsInfo ->
+                    Html.footer [ class "news-info" ]
+                        [ Html.p [] <|
+                            (newsInfo.author
+                                |> Maybe.map
+                                    (\author ->
+                                        [ Html.span [ class "news-author" ]
+                                            [ Html.text "Author: " ]
+                                        , Html.text author
+                                        ]
+                                    )
+                                |> Maybe.withDefault []
+                            )
+                                ++ [ Html.text " " ]
+                                ++ (newsInfo.date
+                                        |> Maybe.map
+                                            (\date ->
+                                                [ Html.span [ class "news-date" ]
+                                                    [ Html.text "Date: " ]
+                                                , Html.text date
+                                                ]
+                                            )
+                                        |> Maybe.withDefault []
+                                   )
+                        ]
+                )
+            |> Maybe.withDefault (Html.text "")
         , model.content
             |> Maybe.map (Markdown.toHtml [])
             |> Maybe.withDefault (Html.text "")

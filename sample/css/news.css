@@ -1,0 +1,12 @@
+.news-info {
+  border-left: 2pt solid gray;
+  padding-left: 1em;
+}
+
+.news-author {
+  font-weight: 600;
+}
+
+.news-date {
+  font-weight: 600;
+}
