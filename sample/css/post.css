@@ -1,7 +1,5 @@
 .post-info {
-  border-left-color: gray;
-  border-left-style: solid;
-  border-left-width: 2pt;
+  border-left: 2pt solid gray;
   padding-left: 1em;
 }
 
