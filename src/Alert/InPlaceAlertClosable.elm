@@ -1,4 +1,4 @@
-module Alert.InPlaceAlertCloseable exposing (Model, Msg, init, update, view)
+module Alert.InPlaceAlertClosable exposing (Model, Msg, init, update, view)
 
 import Html
 import Html.Attributes exposing (class)
