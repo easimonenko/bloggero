@@ -20,7 +20,7 @@ import Material.List as MdlList
 
 import Alert.AlertLevel as AlertLevel
 import Alert.InPlaceAlert as InPlaceAlert
-import Link
+import Link.Link as Link
 
 
 type alias Model =

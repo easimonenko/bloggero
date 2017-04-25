@@ -1,4 +1,4 @@
-module Link exposing (Model, Msg, init, update, view)
+module Link.Link exposing (Model, Msg, init, update, view)
 
 import Html
 import Html.Attributes exposing (..)
