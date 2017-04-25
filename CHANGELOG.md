@@ -1,5 +1,13 @@
 # Bloggero ChangeLog
 
+## 2017-04-25, Version 0.3.0
+
+* :new: The News section.
+* :new: Closable InPlaceAlert.
+* Many fixes, refactorings and cleaning of code.
+* Styling.
+* Upgrade packages.
+
 ## 2017-01-11, Version 0.2.8
 
 * Extracted Config.

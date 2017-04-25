@@ -1,6 +1,6 @@
 {
   "name": "bloggero-elm-mdl",
-  "version": "0.2.8",
+  "version": "0.3.0",
   "description": "Bloggero -- engine for static blogs with single page interface written in Elm with Material Design Light.",
   "main": "app.js",
   "scripts": {
@@ -37,10 +37,10 @@
     "elm-live": "^2.6.0",
     "gulp": "^3.9.1",
     "gulp-connect": "^5.0.0",
-    "gulp-elm": "^0.6.1",
+    "gulp-elm": "^0.7.1",
     "gulp-plumber": "^1.1.0",
     "gulp-util": "^3.0.7",
     "stylelint": "^7.5.0",
-    "stylelint-config-standard": "^14.0.0"
+    "stylelint-config-standard": "^16.0.0"
   }
 }
