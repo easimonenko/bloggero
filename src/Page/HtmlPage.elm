@@ -13,6 +13,7 @@ import Task
 
 import Alert.AlertLevel as AlertLevel
 import Alert.InPlaceAlert as InPlaceAlert
+import Page.PageInfo as PageInfo
 import Utils
 
 
@@ -29,8 +30,7 @@ type alias Options =
 
 
 type Msg
-    = PageInfoFetchSucceed String
-    | PageInfoFetchFail Http.Error
+    = PageInfoMsg PageInfo.Msg
     | PageContentFetchSucceed String
     | PageContentFetchFail Http.Error
 
@@ -51,63 +51,76 @@ init location =
         , content = Nothing
         , inPlaceAlert = Just inPlaceAlert
         }
-    , Task.attempt
-        (\result ->
-            case result of
-                Ok pageInfo ->
-                    PageInfoFetchSucceed pageInfo
-
-                Err error ->
-                    PageInfoFetchFail error
-        )
-        (Http.toTask <| Http.getString <| (Utils.pagePath location) ++ "/index.json")
+    , Cmd.map PageInfoMsg <| PageInfo.init (Utils.pagePath location)
     )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        PageInfoFetchSucceed pageInfo ->
-            let
-                optionsDecoder =
-                    decode identity
-                        |> optional "html"
-                            (decode Options |> optional "highlight" bool False)
-                            defaultOptions
-            in
-                case decodeString optionsDecoder pageInfo of
-                    Ok options ->
-                        ( { model | options = options }
-                        , Task.attempt
-                            (\result ->
-                                case result of
-                                    Ok content ->
-                                        PageContentFetchSucceed content
+        PageInfoMsg pageInfoMsg ->
+            case PageInfo.update pageInfoMsg of
+                PageInfo.Success _ json _ ->
+                    let
+                        optionsDecoder =
+                            decode identity
+                                |> optional "html"
+                                    (decode Options |> optional "highlight" bool False)
+                                    defaultOptions
+                    in
+                        case decodeString optionsDecoder json of
+                            Ok options ->
+                                ( { model | options = options }
+                                , Task.attempt
+                                    (\result ->
+                                        case result of
+                                            Ok content ->
+                                                PageContentFetchSucceed content
 
-                                    Err error ->
-                                        PageContentFetchFail error
-                            )
-                            (Http.toTask <|
-                                Http.getString <|
-                                    (Utils.pagePath model.location)
-                                        ++ "/index.html"
-                            )
-                        )
+                                            Err error ->
+                                                PageContentFetchFail error
+                                    )
+                                    (Http.toTask <|
+                                        Http.getString <|
+                                            (Utils.pagePath model.location)
+                                                ++ "/index.html"
+                                    )
+                                )
 
-                    Err error ->
-                        let
-                            inPlaceAlert =
-                                InPlaceAlert.init AlertLevel.DangerLevel error
-                        in
-                            ( { model | inPlaceAlert = Just inPlaceAlert }
-                            , Cmd.none
-                            )
+                            Err error ->
+                                let
+                                    inPlaceAlert =
+                                        InPlaceAlert.init AlertLevel.DangerLevel error
+                                in
+                                    ( { model | inPlaceAlert = Just inPlaceAlert }
+                                    , Cmd.none
+                                    )
+
+                PageInfo.FetchFail _ error ->
+                    let
+                        inPlaceAlert =
+                            InPlaceAlert.init AlertLevel.DangerLevel (Utils.toHumanReadable error)
+                    in
+                        ( { model | inPlaceAlert = Just inPlaceAlert }, Cmd.none )
+
+                PageInfo.BadJson _ _ error ->
+                    let
+                        inPlaceAlert =
+                            InPlaceAlert.init AlertLevel.DangerLevel error
+                    in
+                        ( { model | inPlaceAlert = Just inPlaceAlert }, Cmd.none )
 
         PageContentFetchSucceed pageContent ->
-            ( { model | content = Just pageContent }, Cmd.none )
+            ( { model | content = Just pageContent, inPlaceAlert = Nothing }
+            , Cmd.none
+            )
 
-        _ ->
-            ( model, Cmd.none )
+        PageContentFetchFail error ->
+            let
+                inPlaceAlert =
+                    InPlaceAlert.init AlertLevel.DangerLevel (Utils.toHumanReadable error)
+            in
+                ( { model | inPlaceAlert = Just inPlaceAlert }, Cmd.none )
 
 
 view : Model -> Html.Html Msg
