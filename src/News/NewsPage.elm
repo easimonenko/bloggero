@@ -14,6 +14,7 @@ import Task
 
 import Alert.AlertLevel as AlertLevel
 import Alert.InPlaceAlert as InPlaceAlert
+import News.NewsInfo exposing (..)
 import Page.PageInfo as PageInfo
 import Utils
 
@@ -24,12 +25,6 @@ type alias Model =
     , pageInfo : Maybe PageInfo.PageInfo
     , newsInfo : Maybe NewsInfo
     , content : Maybe String
-    }
-
-
-type alias NewsInfo =
-    { author : Maybe String
-    , date : Maybe String
     }
 
 
@@ -89,38 +84,28 @@ update msg model =
         PageInfoMsg pageInfoMsg ->
             case PageInfo.update pageInfoMsg of
                 PageInfo.Success path pageInfoJson pageInfo ->
-                    let
-                        newsDecoder =
-                            maybe
-                                (field "news"
-                                    (map2 NewsInfo
-                                        (maybe (field "author" string))
-                                        (maybe (field "date" string))
-                                    )
-                                )
-                    in
-                        case decodeString newsDecoder pageInfoJson of
-                            Ok newsInfo ->
+                    case decodeString newsInfoDecoder pageInfoJson of
+                        Ok newsInfo ->
+                            ( { model
+                                | pageInfo = Just pageInfo
+                                , newsInfo = newsInfo
+                              }
+                            , loadContent model
+                            , NoneOutMsg
+                            )
+
+                        Err error ->
+                            let
+                                inPlaceAlert =
+                                    InPlaceAlert.init AlertLevel.DangerLevel error
+                            in
                                 ( { model
                                     | pageInfo = Just pageInfo
-                                    , newsInfo = newsInfo
+                                    , inPlaceAlert = Just inPlaceAlert
                                   }
-                                , loadContent model
+                                , Cmd.none
                                 , NoneOutMsg
                                 )
-
-                            Err error ->
-                                let
-                                    inPlaceAlert =
-                                        InPlaceAlert.init AlertLevel.DangerLevel error
-                                in
-                                    ( { model
-                                        | pageInfo = Just pageInfo
-                                        , inPlaceAlert = Just inPlaceAlert
-                                      }
-                                    , Cmd.none
-                                    , NoneOutMsg
-                                    )
 
                 PageInfo.BadJson path pageInfoJson errorInfo ->
                     let
