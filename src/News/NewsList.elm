@@ -2,6 +2,8 @@ module News.NewsList exposing (Model, Msg, Config, defaultConfig, init, update, 
 
 import Dict
 import Html
+import Html.Attributes exposing (..)
+import Html.Attributes.Extra exposing (innerHtml)
 import Json.Decode exposing (..)
 import Maybe.Extra
 
@@ -15,14 +17,15 @@ import Material.List as MdlList
 
 import Alert.AlertLevel as AlertLevel
 import Alert.InPlaceAlert as InPlaceAlert
-import Link
+import Link.LinkFromPageInfo exposing (..)
+import News.NewsInfo exposing (..)
 import Page.PageInfo as PageInfo
 
 
 type alias Model =
     { config : Config
     , newsIds : List NewsId
-    , newsListLinks : Dict.Dict NewsId Link.Model
+    , newsPageInfos : Dict.Dict NewsId NewsPageInfo
     , inPlaceAlert : Maybe InPlaceAlert.Model
     }
 
@@ -31,9 +34,15 @@ type alias NewsId =
     String
 
 
+type alias NewsPageInfo =
+    { pageInfo : PageInfo.PageInfo
+    , newsInfo : Maybe NewsInfo
+    }
+
+
 type Msg
     = PageInfoMsg PageInfo.Msg
-    | LinkMsg NewsId Link.Msg
+    | NewsPageInfoMsg NewsId PageInfo.Msg
 
 
 type alias Config =
@@ -57,7 +66,7 @@ init config =
     in
         ( { config = config
           , newsIds = []
-          , newsListLinks = Dict.empty
+          , newsPageInfos = Dict.empty
           , inPlaceAlert = Just inPlaceAlert
           }
         , Cmd.map PageInfoMsg (PageInfo.init config.root)
@@ -107,27 +116,19 @@ update msg model =
                                                     AlertLevel.SuccessLevel
                                                     "News list loaded."
 
-                                            ( links, linkCmds ) =
-                                                List.unzip <|
-                                                    List.map
-                                                        (\newsId ->
-                                                            let
-                                                                ( link, linkCmds ) =
-                                                                    Link.init <| model.config.root ++ "/" ++ newsId
-                                                            in
-                                                                ( ( newsId, link ), ( newsId, linkCmds ) )
-                                                        )
-                                                        newsIdsUnwraped
+                                            newsPageInfoCmds =
+                                                List.map
+                                                    (\newsId ->
+                                                        Cmd.map (NewsPageInfoMsg newsId)
+                                                            (PageInfo.init <| model.config.root ++ "/" ++ newsId)
+                                                    )
+                                                    newsIdsUnwraped
                                         in
                                             ( { model
                                                 | newsIds = newsIdsUnwraped
-                                                , newsListLinks = Dict.fromList links
                                                 , inPlaceAlert = Just inPlaceAlert
                                               }
-                                            , Cmd.batch <|
-                                                List.map
-                                                    (\( newsId, linkCmds ) -> Cmd.map (LinkMsg newsId) linkCmds)
-                                                    linkCmds
+                                            , Cmd.batch newsPageInfoCmds
                                             )
 
                             Err info ->
@@ -144,32 +145,29 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        LinkMsg newsId linkMsg ->
-            Dict.get newsId model.newsListLinks
-                |> Maybe.map
-                    (\link ->
-                        let
-                            ( linkUpdated, linkCmds ) =
-                                Link.update linkMsg link
-                        in
-                            ( { model
-                                | inPlaceAlert = Nothing
-                                , newsListLinks =
-                                    Dict.update newsId
-                                        (\item ->
-                                            case item of
-                                                Just _ ->
-                                                    Just linkUpdated
+        NewsPageInfoMsg newsId pageInfoMsg ->
+            case PageInfo.update pageInfoMsg of
+                PageInfo.Success path json pageInfo ->
+                    case decodeString newsInfoDecoder json of
+                        Ok newsInfo ->
+                            let
+                                newsPageInfo =
+                                    { pageInfo = pageInfo
+                                    , newsInfo = newsInfo
+                                    }
+                            in
+                                ( { model
+                                    | newsPageInfos = Dict.insert newsId newsPageInfo model.newsPageInfos
+                                    , inPlaceAlert = Nothing
+                                  }
+                                , Cmd.none
+                                )
 
-                                                Nothing ->
-                                                    Nothing
-                                        )
-                                        model.newsListLinks
-                              }
-                            , Cmd.map (LinkMsg newsId) linkCmds
-                            )
-                    )
-                |> Maybe.withDefault ( model, Cmd.none )
+                        Err error ->
+                            ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
 
 view : Model -> Html.Html Msg
@@ -183,10 +181,40 @@ view model =
             List.map
                 (\newsId ->
                     MdlList.li []
-                        [ Dict.get newsId model.newsListLinks
-                            |> Maybe.map (Html.map (LinkMsg newsId) << Link.view)
-                            |> Maybe.withDefault (Html.text "")
-                        ]
+                        (case Dict.get newsId model.newsPageInfos of
+                            Just { pageInfo, newsInfo } ->
+                                let
+                                    path =
+                                        model.config.root ++ "/" ++ newsId
+                                in
+                                    (linkFromPageInfo path pageInfo)
+                                        :: (newsInfo
+                                                |> Maybe.map
+                                                    (\{ author, date } ->
+                                                        [ Maybe.Extra.unwrap
+                                                            (Html.text "")
+                                                            (\date ->
+                                                                Html.span
+                                                                    [ class "news-link-date", innerHtml "&ndash;&nbsp;" ]
+                                                                    [ Html.text date ]
+                                                            )
+                                                            date
+                                                        , Maybe.Extra.unwrap
+                                                            (Html.text "")
+                                                            (\author ->
+                                                                Html.span
+                                                                    [ class "news-link-author", innerHtml "&ndash;&nbsp;" ]
+                                                                    [ Html.text author ]
+                                                            )
+                                                            author
+                                                        ]
+                                                    )
+                                                |> Maybe.withDefault []
+                                           )
+
+                            Nothing ->
+                                [ Html.text "" ]
+                        )
                 )
                 model.newsIds
         ]
