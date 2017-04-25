@@ -10,3 +10,13 @@
 .news-date {
   font-weight: 600;
 }
+
+.news-link-author {
+  padding-left: 2pt;
+  font-style: italic;
+}
+
+.news-link-date {
+  padding-left: 2pt;
+  font-weight: lighter;
+}
