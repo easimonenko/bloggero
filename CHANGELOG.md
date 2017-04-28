@@ -1,5 +1,10 @@
 # Bloggero ChangeLog
 
+## 2017-04-28, Version 0.3.1
+
+* :new: Added post info in post list.
+* Refactorings in PostList.
+
 ## 2017-04-25, Version 0.3.0
 
 * :new: The News section.
