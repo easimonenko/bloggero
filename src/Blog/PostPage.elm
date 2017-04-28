@@ -16,6 +16,7 @@ import Task
 import Alert.AlertLevel as AlertLevel
 import Alert.InPlaceAlert as InPlaceAlert
 import Page.PageInfo as PageInfo
+import Blog.PostInfo exposing (..)
 import Utils
 
 
@@ -26,13 +27,6 @@ type alias Model =
     , rawContent : Maybe String
     , rawContentType : RawContentType
     , inPlaceAlert : Maybe InPlaceAlert.Model
-    }
-
-
-type alias PostInfo =
-    { author : Maybe String
-    , abstract : Maybe String
-    , date : Maybe String
     }
 
 

@@ -1,18 +1,16 @@
 module Blog.PostList exposing (Model, Msg, OutMsg(..), init, update, view, defaultConfig)
 
 import Dict exposing (..)
-import Html exposing (..)
+import Html
 import Html.Attributes exposing (..)
-import Http
+import Html.Attributes.Extra exposing (innerHtml)
 import Json.Decode exposing (..)
+import Maybe.Extra
 import Result exposing (..)
-import Task
-import Tuple exposing (..)
 
 
 -- Material Design Lite modules
 
-import Material
 import Material.List as MdlList
 
 
@@ -20,22 +18,33 @@ import Material.List as MdlList
 
 import Alert.AlertLevel as AlertLevel
 import Alert.InPlaceAlert as InPlaceAlert
-import Link.Link as Link
+import Blog.PostInfo exposing (..)
+import Link.LinkFromPageInfo exposing (..)
+import Page.PageInfo as PageInfo
+import Utils
 
 
 type alias Model =
-    { root : String
-    , title : String
-    , postIds : List String
-    , postListLinks : Dict String Link.Model
+    { config : PostListConfig
+    , postIds : List PostId
+    , postPageInfos : Dict.Dict PostId PostPageInfo
     , inPlaceAlert : Maybe InPlaceAlert.Model
     }
 
 
+type alias PostId =
+    String
+
+
+type alias PostPageInfo =
+    { pageInfo : PageInfo.PageInfo
+    , postInfo : Maybe PostInfo
+    }
+
+
 type Msg
-    = BlogConfigFetchFail Http.Error
-    | BlogConfigFetchSucceed String
-    | LinkMsg String Link.Msg
+    = PageInfoMsg PageInfo.Msg
+    | PostPageInfoMsg PostId PageInfo.Msg
 
 
 type OutMsg
@@ -51,22 +60,12 @@ type alias PostListConfig =
 
 init : PostListConfig -> ( Model, Cmd Msg, OutMsg )
 init config =
-    ( { root = config.root
-      , title = config.title
+    ( { config = config
       , postIds = []
-      , postListLinks = Dict.empty
+      , postPageInfos = Dict.empty
       , inPlaceAlert = Nothing
       }
-    , Task.attempt
-        (\result ->
-            case result of
-                Err msg ->
-                    BlogConfigFetchFail msg
-
-                Ok msg ->
-                    BlogConfigFetchSucceed msg
-        )
-        (Http.toTask <| Http.getString <| config.root ++ "/index.json")
+    , Cmd.map PageInfoMsg <| PageInfo.init config.root
     , NoneOutMsg
     )
 
@@ -78,119 +77,173 @@ defaultConfig =
     }
 
 
-tuple2triple : ( a, b ) -> c -> ( a, b, c )
-tuple2triple t v =
-    ( first t, second t, v )
-
-
 update : Msg -> Model -> ( Model, Cmd Msg, OutMsg )
 update msg model =
     case msg of
-        --Mdl mdlMsg ->
-        --    tuple2triple (Material.update mdlMsg model) NoneOutMsg
-        BlogConfigFetchSucceed config ->
-            let
-                configDecoder =
-                    field "blog" <|
-                        Json.Decode.map identity <|
-                            field "posts" <|
-                                Json.Decode.list string
-
-                configDecodeResult =
-                    decodeString configDecoder config
-            in
-                case configDecodeResult of
-                    Ok postIds ->
-                        let
-                            ( links, linkCmds ) =
-                                List.unzip <|
-                                    List.map
-                                        (\postId ->
-                                            let
-                                                ( link, linkCmds ) =
-                                                    Link.init <| model.root ++ "/" ++ postId
-                                            in
-                                                ( ( postId, link ), ( postId, linkCmds ) )
-                                        )
-                                        postIds
-                        in
-                            ( { model | postIds = postIds, postListLinks = Dict.fromList links }
-                            , Cmd.batch <|
-                                List.map
-                                    (\( postId, linkCmds ) -> Cmd.map (LinkMsg postId) linkCmds)
-                                    linkCmds
-                            , NoneOutMsg
-                            )
-
-                    Err info ->
-                        let
-                            inPlaceAlert =
-                                InPlaceAlert.init AlertLevel.DangerLevel info
-                        in
-                            ( { model | inPlaceAlert = Just inPlaceAlert }
-                            , Cmd.none
-                            , AlertOutMsg AlertLevel.DangerLevel info
-                            )
-
-        BlogConfigFetchFail error ->
-            let
-                inPlaceAlert =
-                    InPlaceAlert.init AlertLevel.DangerLevel "Http Error"
-            in
-                ( { model | inPlaceAlert = Just inPlaceAlert }
-                , Cmd.none
-                , AlertOutMsg AlertLevel.DangerLevel "Http Error"
-                )
-
-        LinkMsg postId linkMsg ->
-            case Dict.get postId model.postListLinks of
-                Just link ->
+        PageInfoMsg pageInfoMsg ->
+            case PageInfo.update pageInfoMsg of
+                PageInfo.Success _ json pageInfo ->
                     let
-                        ( linkUpdated, linkCmds ) =
-                            Link.update linkMsg link
-                    in
-                        ( { model
-                            | postListLinks =
-                                Dict.update postId
-                                    (\item ->
-                                        case item of
-                                            Just _ ->
-                                                Just linkUpdated
+                        configDecoder =
+                            field "blog" <|
+                                Json.Decode.map identity <|
+                                    field "posts" <|
+                                        Json.Decode.list string
 
-                                            Nothing ->
-                                                Nothing
+                        configDecodeResult =
+                            decodeString configDecoder json
+                    in
+                        case configDecodeResult of
+                            Ok postIds ->
+                                if List.isEmpty postIds then
+                                    let
+                                        info =
+                                            "Post list is empty."
+
+                                        inPlaceAlert =
+                                            InPlaceAlert.init
+                                                AlertLevel.WarningLevel
+                                                info
+                                    in
+                                        ( { model
+                                            | inPlaceAlert = Just inPlaceAlert
+                                          }
+                                        , Cmd.none
+                                        , AlertOutMsg AlertLevel.InfoLevel info
+                                        )
+                                else
+                                    let
+                                        info =
+                                            "Post list loaded."
+
+                                        inPlaceAlert =
+                                            InPlaceAlert.init
+                                                AlertLevel.SuccessLevel
+                                                info
+
+                                        postPageInfoCmds =
+                                            List.map
+                                                (\postId ->
+                                                    Cmd.map (PostPageInfoMsg postId)
+                                                        (PageInfo.init <| model.config.root ++ "/" ++ postId)
+                                                )
+                                                postIds
+                                    in
+                                        ( { model
+                                            | inPlaceAlert = Just inPlaceAlert
+                                            , postIds = postIds
+                                          }
+                                        , Cmd.batch postPageInfoCmds
+                                        , AlertOutMsg AlertLevel.InfoLevel info
+                                        )
+
+                            Err info ->
+                                let
+                                    inPlaceAlert =
+                                        InPlaceAlert.init AlertLevel.DangerLevel info
+                                in
+                                    ( { model | inPlaceAlert = Just inPlaceAlert }
+                                    , Cmd.none
+                                    , AlertOutMsg AlertLevel.DangerLevel info
                                     )
-                                    model.postListLinks
-                          }
-                        , Cmd.map (LinkMsg postId) linkCmds
-                        , NoneOutMsg
+
+                PageInfo.FetchFail _ error ->
+                    let
+                        info =
+                            "Http Error: " ++ (Utils.toHumanReadable error)
+
+                        inPlaceAlert =
+                            InPlaceAlert.init AlertLevel.DangerLevel info
+                    in
+                        ( { model | inPlaceAlert = Just inPlaceAlert }
+                        , Cmd.none
+                        , AlertOutMsg AlertLevel.DangerLevel info
                         )
 
-                Nothing ->
+                PageInfo.BadJson _ _ error ->
+                    let
+                        info =
+                            "Blog PageInfo: " ++ error
+
+                        inPlaceAlert =
+                            InPlaceAlert.init AlertLevel.DangerLevel info
+                    in
+                        ( { model | inPlaceAlert = Just inPlaceAlert }
+                        , Cmd.none
+                        , AlertOutMsg AlertLevel.DangerLevel info
+                        )
+
+        PostPageInfoMsg postId pageInfoMsg ->
+            case PageInfo.update pageInfoMsg of
+                PageInfo.Success path json pageInfo ->
+                    case decodeString postInfoDecoder json of
+                        Ok postInfo ->
+                            let
+                                postPageInfo =
+                                    { pageInfo = pageInfo
+                                    , postInfo = postInfo
+                                    }
+                            in
+                                ( { model
+                                    | postPageInfos = Dict.insert postId postPageInfo model.postPageInfos
+                                    , inPlaceAlert = Nothing
+                                  }
+                                , Cmd.none
+                                , NoneOutMsg
+                                )
+
+                        Err error ->
+                            ( model, Cmd.none, NoneOutMsg )
+
+                _ ->
                     ( model, Cmd.none, NoneOutMsg )
 
 
-view : Model -> Html Msg
+view : Model -> Html.Html Msg
 view model =
-    case model.inPlaceAlert of
-        Nothing ->
-            div []
-                [ h2 []
-                    [ text model.title ]
-                , MdlList.ul [] <|
-                    List.map
-                        (\postId ->
-                            MdlList.li []
-                                [ case Dict.get postId model.postListLinks of
-                                    Just link ->
-                                        Html.map (LinkMsg postId) (Link.view link)
+    Html.div []
+        [ Html.h2 [] [ Html.text model.config.title ]
+        , model.inPlaceAlert
+            |> Maybe.map InPlaceAlert.view
+            |> Maybe.withDefault (Html.text "")
+        , MdlList.ul [] <|
+            List.map
+                (\postId ->
+                    MdlList.li []
+                        (case Dict.get postId model.postPageInfos of
+                            Just { pageInfo, postInfo } ->
+                                let
+                                    path =
+                                        model.config.root ++ "/" ++ postId
+                                in
+                                    (linkFromPageInfo path pageInfo)
+                                        :: (postInfo
+                                                |> Maybe.map
+                                                    (\{ author, abstract, date } ->
+                                                        [ Maybe.Extra.unwrap
+                                                            (Html.text "")
+                                                            (\date ->
+                                                                Html.span
+                                                                    [ class "news-link-date", innerHtml "&ndash;&nbsp;" ]
+                                                                    [ Html.text date ]
+                                                            )
+                                                            date
+                                                        , Maybe.Extra.unwrap
+                                                            (Html.text "")
+                                                            (\author ->
+                                                                Html.span
+                                                                    [ class "news-link-author", innerHtml "&ndash;&nbsp;" ]
+                                                                    [ Html.text author ]
+                                                            )
+                                                            author
+                                                        ]
+                                                    )
+                                                |> Maybe.withDefault []
+                                           )
 
-                                    Nothing ->
-                                        text ""
-                                ]
+                            Nothing ->
+                                [ Html.text "" ]
                         )
-                        model.postIds
-                ]
-
-        Just inPlaceAlert ->
-            InPlaceAlert.view inPlaceAlert
+                )
+                model.postIds
+        ]
