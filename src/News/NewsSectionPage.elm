@@ -36,7 +36,7 @@ init location =
         newsListConfig =
             NewsList.defaultConfig
 
-        ( newsList, newsListCmds ) =
+        ( newsList, newsListCmds, newsListOutMsg ) =
             NewsList.init { newsListConfig | root = (Utils.pagePath location) }
     in
         ( { pageInfo = Nothing
@@ -66,12 +66,20 @@ update msg model =
 
         NewsListMsg msg ->
             let
-                ( newsList, newsListCmds ) =
+                ( newsList, newsListCmds, newsListOutMsg ) =
                     NewsList.update msg model.newsList
+
+                outMsg =
+                    case newsListOutMsg of
+                        NewsList.NoneOutMsg ->
+                            NoneOutMsg
+
+                        NewsList.AlertOutMsg level message ->
+                            AlertOutMsg level message
             in
                 ( { model | newsList = newsList }
                 , Cmd.map NewsListMsg newsListCmds
-                , NoneOutMsg
+                , outMsg
                 )
 
 

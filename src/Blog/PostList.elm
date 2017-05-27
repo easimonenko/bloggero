@@ -1,4 +1,13 @@
-module Blog.PostList exposing (Model, Msg, OutMsg(..), init, update, view, defaultConfig)
+module Blog.PostList
+    exposing
+        ( Model
+        , Msg
+        , OutMsg(..)
+        , init
+        , update
+        , view
+        , defaultConfig
+        )
 
 import Dict exposing (..)
 import Html
@@ -27,7 +36,7 @@ import Utils
 type alias Model =
     { config : PostListConfig
     , postIds : List PostId
-    , postPageInfos : Dict.Dict PostId PostPageInfo
+    , postPageInfos : Dict.Dict PostId (Result String PostPageInfo)
     , inPlaceAlert : Maybe InPlaceAlert.Model
     }
 
@@ -185,7 +194,7 @@ update msg model =
                                     }
                             in
                                 ( { model
-                                    | postPageInfos = Dict.insert postId postPageInfo model.postPageInfos
+                                    | postPageInfos = Dict.insert postId (Ok postPageInfo) model.postPageInfos
                                     , inPlaceAlert = Nothing
                                   }
                                 , Cmd.none
@@ -193,10 +202,43 @@ update msg model =
                                 )
 
                         Err error ->
-                            ( model, Cmd.none, NoneOutMsg )
+                            let
+                                info =
+                                    "Post Page Info: " ++ error
+                            in
+                                ( { model
+                                    | inPlaceAlert = Nothing
+                                    , postPageInfos = Dict.insert postId (Err info) model.postPageInfos
+                                  }
+                                , Cmd.none
+                                , AlertOutMsg AlertLevel.DangerLevel info
+                                )
 
-                _ ->
-                    ( model, Cmd.none, NoneOutMsg )
+                PageInfo.FetchFail _ error ->
+                    let
+                        info =
+                            "PostId: " ++ postId ++ " | Http Error: " ++ (Utils.toHumanReadable error)
+                    in
+                        ( { model
+                            | inPlaceAlert = Nothing
+                            , postPageInfos = Dict.insert postId (Err info) model.postPageInfos
+                          }
+                        , Cmd.none
+                        , AlertOutMsg AlertLevel.DangerLevel info
+                        )
+
+                PageInfo.BadJson _ _ error ->
+                    let
+                        info =
+                            "Post Page Info: " ++ error
+                    in
+                        ( { model
+                            | inPlaceAlert = Nothing
+                            , postPageInfos = Dict.insert postId (Err info) model.postPageInfos
+                          }
+                        , Cmd.none
+                        , AlertOutMsg AlertLevel.DangerLevel info
+                        )
 
 
 view : Model -> Html.Html Msg
@@ -211,7 +253,10 @@ view model =
                 (\postId ->
                     MdlList.li []
                         (case Dict.get postId model.postPageInfos of
-                            Just { pageInfo, postInfo } ->
+                            Just (Err errorInfo) ->
+                                [ Html.span [ class "alert-danger" ] [ Html.text errorInfo ] ]
+
+                            Just (Ok { pageInfo, postInfo }) ->
                                 let
                                     path =
                                         model.config.root ++ "/" ++ postId
@@ -242,7 +287,9 @@ view model =
                                            )
 
                             Nothing ->
-                                [ Html.text "" ]
+                                [ Html.span [ class "alert-info" ]
+                                    [ Html.text <| "PostId: " ++ postId ++ " | Post info loading..." ]
+                                ]
                         )
                 )
                 model.postIds

@@ -1,4 +1,14 @@
-module News.NewsList exposing (Model, Msg, Config, defaultConfig, init, update, view)
+module News.NewsList
+    exposing
+        ( Model
+        , Msg
+        , Config
+        , OutMsg(..)
+        , defaultConfig
+        , init
+        , update
+        , view
+        )
 
 import Dict
 import Html
@@ -20,12 +30,13 @@ import Alert.InPlaceAlert as InPlaceAlert
 import Link.LinkFromPageInfo exposing (..)
 import News.NewsInfo exposing (..)
 import Page.PageInfo as PageInfo
+import Utils
 
 
 type alias Model =
     { config : Config
     , newsIds : List NewsId
-    , newsPageInfos : Dict.Dict NewsId NewsPageInfo
+    , newsPageInfos : Dict.Dict NewsId (Result String NewsPageInfo)
     , inPlaceAlert : Maybe InPlaceAlert.Model
     }
 
@@ -45,6 +56,11 @@ type Msg
     | NewsPageInfoMsg NewsId PageInfo.Msg
 
 
+type OutMsg
+    = NoneOutMsg
+    | AlertOutMsg AlertLevel.Level String
+
+
 type alias Config =
     { root : String
     , title : String
@@ -58,7 +74,7 @@ defaultConfig =
     }
 
 
-init : Config -> ( Model, Cmd Msg )
+init : Config -> ( Model, Cmd Msg, OutMsg )
 init config =
     let
         inPlaceAlert =
@@ -70,10 +86,11 @@ init config =
           , inPlaceAlert = Just inPlaceAlert
           }
         , Cmd.map PageInfoMsg (PageInfo.init config.root)
+        , NoneOutMsg
         )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg, OutMsg )
 update msg model =
     case msg of
         PageInfoMsg msg ->
@@ -99,15 +116,19 @@ update msg model =
                                 in
                                     if List.isEmpty newsIdsUnwraped then
                                         let
+                                            info =
+                                                "News list is empty."
+
                                             inPlaceAlert =
                                                 InPlaceAlert.init
                                                     AlertLevel.WarningLevel
-                                                    "News list is empty."
+                                                    info
                                         in
                                             ( { model
                                                 | inPlaceAlert = Just inPlaceAlert
                                               }
                                             , Cmd.none
+                                            , AlertOutMsg AlertLevel.InfoLevel info
                                             )
                                     else
                                         let
@@ -129,6 +150,7 @@ update msg model =
                                                 , inPlaceAlert = Just inPlaceAlert
                                               }
                                             , Cmd.batch newsPageInfoCmds
+                                            , NoneOutMsg
                                             )
 
                             Err info ->
@@ -140,10 +162,34 @@ update msg model =
                                         | inPlaceAlert = Just inPlaceAlert
                                       }
                                     , Cmd.none
+                                    , AlertOutMsg AlertLevel.DangerLevel info
                                     )
 
-                _ ->
-                    ( model, Cmd.none )
+                PageInfo.FetchFail _ error ->
+                    let
+                        info =
+                            "Http Error: " ++ (Utils.toHumanReadable error)
+
+                        inPlaceAlert =
+                            InPlaceAlert.init AlertLevel.DangerLevel info
+                    in
+                        ( { model | inPlaceAlert = Just inPlaceAlert }
+                        , Cmd.none
+                        , AlertOutMsg AlertLevel.DangerLevel info
+                        )
+
+                PageInfo.BadJson _ _ error ->
+                    let
+                        info =
+                            "Blog PageInfo: " ++ error
+
+                        inPlaceAlert =
+                            InPlaceAlert.init AlertLevel.DangerLevel info
+                    in
+                        ( { model | inPlaceAlert = Just inPlaceAlert }
+                        , Cmd.none
+                        , AlertOutMsg AlertLevel.DangerLevel info
+                        )
 
         NewsPageInfoMsg newsId pageInfoMsg ->
             case PageInfo.update pageInfoMsg of
@@ -157,17 +203,51 @@ update msg model =
                                     }
                             in
                                 ( { model
-                                    | newsPageInfos = Dict.insert newsId newsPageInfo model.newsPageInfos
+                                    | newsPageInfos = Dict.insert newsId (Ok newsPageInfo) model.newsPageInfos
                                     , inPlaceAlert = Nothing
                                   }
                                 , Cmd.none
+                                , NoneOutMsg
                                 )
 
                         Err error ->
-                            ( model, Cmd.none )
+                            let
+                                info =
+                                    "News Page Info: " ++ error
+                            in
+                                ( { model
+                                    | inPlaceAlert = Nothing
+                                    , newsPageInfos = Dict.insert newsId (Err info) model.newsPageInfos
+                                  }
+                                , Cmd.none
+                                , AlertOutMsg AlertLevel.DangerLevel info
+                                )
 
-                _ ->
-                    ( model, Cmd.none )
+                PageInfo.FetchFail _ error ->
+                    let
+                        info =
+                            "NewsId: " ++ newsId ++ " | Http Error: " ++ (Utils.toHumanReadable error)
+                    in
+                        ( { model
+                            | inPlaceAlert = Nothing
+                            , newsPageInfos = Dict.insert newsId (Err info) model.newsPageInfos
+                          }
+                        , Cmd.none
+                        , AlertOutMsg AlertLevel.DangerLevel info
+                        )
+
+                PageInfo.BadJson _ _ error ->
+                    let
+                        info =
+                            "News Page Info: " ++ error
+                    in
+                        ( { model
+                            | inPlaceAlert = Nothing
+                            , newsPageInfos = Dict.insert newsId (Err info) model.newsPageInfos
+                          }
+                        , Cmd.none
+                        , AlertOutMsg AlertLevel.DangerLevel info
+                        )
 
 
 view : Model -> Html.Html Msg
@@ -182,7 +262,10 @@ view model =
                 (\newsId ->
                     MdlList.li []
                         (case Dict.get newsId model.newsPageInfos of
-                            Just { pageInfo, newsInfo } ->
+                            Just (Err errorInfo) ->
+                                [ Html.span [ class "alert-danger" ] [ Html.text errorInfo ] ]
+
+                            Just (Ok { pageInfo, newsInfo }) ->
                                 let
                                     path =
                                         model.config.root ++ "/" ++ newsId

@@ -66,7 +66,7 @@ init config =
             in
                 PostList.init { postListDefaultConfig | root = config.blogRoot }
 
-        ( newsList, newsListCmds ) =
+        ( newsList, newsListCmds, newsListOutMsg ) =
             let
                 newsListDefaultConfig =
                     NewsList.defaultConfig
@@ -76,7 +76,12 @@ init config =
         outMsg =
             case postListOutMsg of
                 PostList.NoneOutMsg ->
-                    NoneOutMsg
+                    case newsListOutMsg of
+                        NewsList.NoneOutMsg ->
+                            NoneOutMsg
+
+                        NewsList.AlertOutMsg level message ->
+                            AlertOutMsg level message
 
                 PostList.AlertOutMsg level message ->
                     AlertOutMsg level message
@@ -113,8 +118,16 @@ update msg model =
 
         NewsListMsg newsListMsg ->
             let
-                ( newsList, newsListCmds ) =
+                ( newsList, newsListCmds, newsListOutMsg ) =
                     NewsList.update newsListMsg model.newsList
+
+                outMsg =
+                    case newsListOutMsg of
+                        NewsList.NoneOutMsg ->
+                            NoneOutMsg
+
+                        NewsList.AlertOutMsg level message ->
+                            AlertOutMsg level message
             in
                 ( { model | newsList = newsList }
                 , Cmd.map NewsListMsg newsListCmds
