@@ -439,7 +439,10 @@ footerView model =
                                                 case copyright.url of
                                                     Just url ->
                                                         Html.a
-                                                            [ href url, innerHtml copyright.text ]
+                                                            [ href url
+                                                            , innerHtml copyright.text
+                                                            , style [ ( "text-decoration", "none" ) ]
+                                                            ]
                                                             []
 
                                                     Nothing ->
