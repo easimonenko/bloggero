@@ -10,3 +10,8 @@
 .page h2 {
   font-size: 18pt;
 }
+
+.page p, ul, a {
+  font-size: 12pt;
+  font-weight: lighter;
+}
