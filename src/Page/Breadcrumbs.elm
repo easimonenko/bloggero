@@ -61,19 +61,40 @@ update msg model =
 
 view : Model -> Html.Html Msg
 view model =
-    Html.ul [ class "breadcrumbs" ] <|
-        List.map
-            (\path ->
-                Maybe.withDefault (Html.text "") <|
-                    Maybe.map
-                        (\pageInfo ->
-                            Html.li
-                                []
-                                [ Html.a
-                                    [ href <| "/#!" ++ path ]
-                                    [ Html.text pageInfo.title ]
-                                ]
+    case List.reverse model.paths of
+        [] ->
+            Html.text ""
+
+        pagePath :: reversedPaths ->
+            Html.ul [ class "breadcrumbs" ]
+                (List.reverse
+                    ((Maybe.withDefault (Html.text "")
+                        (Maybe.map
+                            (\pageInfo ->
+                                Html.li
+                                    []
+                                    [ Html.text pageInfo.title
+                                    ]
+                            )
+                            (Dict.get pagePath model.pageInfo)
                         )
-                        (Dict.get path model.pageInfo)
-            )
-            model.paths
+                     )
+                        :: (List.map
+                                (\path ->
+                                    Maybe.withDefault (Html.text "")
+                                        (Maybe.map
+                                            (\pageInfo ->
+                                                Html.li
+                                                    []
+                                                    [ Html.a
+                                                        [ href <| "/#!" ++ path ]
+                                                        [ Html.text pageInfo.title ]
+                                                    ]
+                                            )
+                                            (Dict.get path model.pageInfo)
+                                        )
+                                )
+                                reversedPaths
+                           )
+                    )
+                )
