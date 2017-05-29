@@ -524,7 +524,12 @@ alertListView model =
         alertListViewCall =
             Html.map AlertListMsg (AlertList.view model.alertList)
     in
-        Grid.cell [ Grid.size All 2 ] <|
+        Grid.cell
+            [ Grid.size Desktop 2
+            , Grid.size Tablet 8
+            , Grid.size Phone 4
+            ]
+        <|
             Maybe.withDefault [ alertListViewCall ] <|
                 flip Maybe.map
                     model.config
@@ -553,6 +558,7 @@ mainView model =
     ]
 
 
+tabsView : ( List a, List b )
 tabsView =
     ( [], [] )
 
