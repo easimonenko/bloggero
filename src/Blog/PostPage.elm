@@ -121,37 +121,26 @@ update msg model =
         PageInfoMsg pageInfoMsg ->
             case PageInfo.update pageInfoMsg of
                 PageInfo.Success path pageInfoJson pageInfo ->
-                    let
-                        postDecoder =
-                            maybe
-                                (field "post"
-                                    (map3 PostInfo
-                                        (maybe (field "author" string))
-                                        (maybe (field "abstract" string))
-                                        (maybe (field "date" string))
-                                    )
-                                )
-                    in
-                        case decodeString postDecoder pageInfoJson of
-                            Ok postInfo ->
+                    case decodeString postInfoDecoder pageInfoJson of
+                        Ok postInfo ->
+                            ( { model
+                                | pageInfo = Just pageInfo
+                                , postInfo = postInfo
+                              }
+                            , loadContentType model (nextContentType model.rawContentType)
+                            )
+
+                        Err error ->
+                            let
+                                inPlaceAlert =
+                                    InPlaceAlert.init AlertLevel.DangerLevel error
+                            in
                                 ( { model
                                     | pageInfo = Just pageInfo
-                                    , postInfo = postInfo
+                                    , inPlaceAlert = Just inPlaceAlert
                                   }
-                                , loadContentType model (nextContentType model.rawContentType)
+                                , Cmd.none
                                 )
-
-                            Err error ->
-                                let
-                                    inPlaceAlert =
-                                        InPlaceAlert.init AlertLevel.DangerLevel error
-                                in
-                                    ( { model
-                                        | pageInfo = Just pageInfo
-                                        , inPlaceAlert = Just inPlaceAlert
-                                      }
-                                    , Cmd.none
-                                    )
 
                 PageInfo.BadJson path pageInfoJson errorInfo ->
                     let
@@ -255,28 +244,41 @@ view model =
             Maybe.map
                 (\postInfo ->
                     Html.footer [ class "post-info" ]
-                        [ Html.p [] <|
-                            (Maybe.withDefault [] <|
+                        [ Html.p []
+                            [ (Maybe.withDefault (Html.text "") <|
                                 Maybe.map
                                     (\author ->
-                                        [ Html.span [ class "post-author" ]
-                                            [ Html.text "Author: " ]
-                                        , Html.text author
-                                        ]
+                                        Html.span []
+                                            [ Html.span [ class "post-author" ]
+                                                [ Html.text "Author: " ]
+                                            , Html.text author
+                                            ]
                                     )
                                     postInfo.author
-                            )
-                                ++ [ Html.text " " ]
-                                ++ (Maybe.withDefault [] <|
-                                        Maybe.map
-                                            (\date ->
-                                                [ Html.span [ class "post-date" ]
-                                                    [ Html.text "Date: " ]
-                                                , Html.text date
-                                                ]
-                                            )
-                                            postInfo.date
-                                   )
+                              )
+                            , (Maybe.withDefault (Html.text "") <|
+                                Maybe.map
+                                    (\date ->
+                                        Html.span []
+                                            [ Html.span [ class "post-date" ]
+                                                [ Html.text " Date: " ]
+                                            , Html.text date
+                                            ]
+                                    )
+                                    postInfo.date
+                              )
+                            , (Maybe.withDefault (Html.text "") <|
+                                Maybe.map
+                                    (\updatingDate ->
+                                        Html.span []
+                                            [ Html.span [ class "post-date" ]
+                                                [ Html.text " Updating: " ]
+                                            , Html.text updatingDate
+                                            ]
+                                    )
+                                    postInfo.updatingDate
+                              )
+                            ]
                         , Maybe.withDefault (Html.text "") <|
                             Maybe.map
                                 (\abstract ->

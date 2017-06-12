@@ -261,30 +261,41 @@ view model =
                                     path =
                                         model.config.root ++ "/" ++ postId
                                 in
-                                    (linkFromPageInfo path pageInfo)
-                                        :: (postInfo
-                                                |> Maybe.map
-                                                    (\{ author, abstract, date } ->
-                                                        [ Maybe.Extra.unwrap
-                                                            (Html.text "")
-                                                            (\date ->
-                                                                Html.span
-                                                                    [ class "news-link-date", innerHtml "&ndash;&nbsp;" ]
-                                                                    [ Html.text date ]
-                                                            )
-                                                            date
-                                                        , Maybe.Extra.unwrap
-                                                            (Html.text "")
-                                                            (\author ->
-                                                                Html.span
-                                                                    [ class "news-link-author", innerHtml "&ndash;&nbsp;" ]
-                                                                    [ Html.text author ]
-                                                            )
-                                                            author
-                                                        ]
-                                                    )
-                                                |> Maybe.withDefault []
-                                           )
+                                    [ Html.p []
+                                        ((linkFromPageInfo path pageInfo)
+                                            :: (postInfo
+                                                    |> Maybe.map
+                                                        (\{ author, abstract, date, updatingDate } ->
+                                                            [ Maybe.Extra.unwrap
+                                                                (Html.text "")
+                                                                (\date ->
+                                                                    Html.span
+                                                                        [ class "post-link-date", innerHtml "&ndash;&nbsp;" ]
+                                                                        [ Html.text date ]
+                                                                )
+                                                                date
+                                                            , Maybe.Extra.unwrap
+                                                                (Html.text "")
+                                                                (\updatingDate ->
+                                                                    Html.span
+                                                                        [ class "post-link-date", innerHtml "/&nbsp;" ]
+                                                                        [ Html.text updatingDate ]
+                                                                )
+                                                                updatingDate
+                                                            , Maybe.Extra.unwrap
+                                                                (Html.text "")
+                                                                (\author ->
+                                                                    Html.span
+                                                                        [ class "post-link-author", innerHtml "&ndash;&nbsp;" ]
+                                                                        [ Html.text author ]
+                                                                )
+                                                                author
+                                                            ]
+                                                        )
+                                                    |> Maybe.withDefault []
+                                               )
+                                        )
+                                    ]
 
                             Nothing ->
                                 [ Html.span [ class "alert-info" ]
