@@ -14,3 +14,17 @@
 .post-abstract {
   font-style: italic;
 }
+
+.post-link-author {
+  padding-left: 2pt;
+  font-style: italic;
+}
+
+.post-link-date {
+  padding-left: 2pt;
+  font-weight: lighter;
+}
+
+li>p {
+  margin-bottom: 0;
+}
