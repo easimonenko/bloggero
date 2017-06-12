@@ -1,5 +1,13 @@
 # Bloggero ChangeLog
 
+## 2017-06-12, Version 0.3.2
+
+* :new: Show of updating date of post.
+* :bug: Fixed view of alert list on tablet and phone.
+* :bug: Fixed breadcrumbs for current page (don't need a link to it).
+* Improved displaying of errors download PageInfo.
+* Styling.
+
 ## 2017-04-28, Version 0.3.1
 
 * :new: Added post info in post list.
