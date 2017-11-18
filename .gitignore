@@ -7,5 +7,6 @@ app.js
 # node.js files
 npm-debug.log
 node_modules/
+package-lock.json
 # visual studio code files
 .vscode
