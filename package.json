@@ -32,15 +32,15 @@
   },
   "private": true,
   "devDependencies": {
-    "commander": "^2.9.0",
+    "commander": "^2.11.0",
     "elm": "^0.18.0",
-    "elm-live": "^2.6.0",
+    "elm-live": "^2.7.5",
     "gulp": "^3.9.1",
     "gulp-connect": "^5.0.0",
-    "gulp-elm": "^0.7.1",
+    "gulp-elm": "^0.7.2",
     "gulp-plumber": "^1.1.0",
     "gulp-util": "^3.0.7",
-    "stylelint": "^7.5.0",
+    "stylelint": "^7.13.0",
     "stylelint-config-standard": "^16.0.0"
   }
 }
