@@ -1,4 +1,4 @@
-# bloggero-elm-mdl
+# Bloggero
 
 Bloggero -- engine for static blogs with a single page interface written in Elm
 with Material Design Light.

@@ -1,4 +1,4 @@
 # Copyright
 
-[Bloggero](https://github.com/easimonenko/bloggero-elm-mdl) is freely
+[Bloggero](https://github.com/easimonenko/bloggero) is freely
 redistributable under the MIT license.
