@@ -1,5 +1,11 @@
 # Bloggero ChangeLog
 
+## 2017-11-18, Version 0.3.3
+
+* Rebranding, now just Bloggero.
+* Upgrade NPM packages.
+* Upgrade Elm packages.
+
 ## 2017-06-12, Version 0.3.2
 
 * :new: Show of updating date of post.
